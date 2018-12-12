@@ -1,6 +1,7 @@
 services: docker
 languages: python
 python: 3.5
+sudo: false
 install:
     - pip install -U pip
     - for i in $(ls -d */); do cd $i; pip install -r dev_requirements.txt; cd ..; done
