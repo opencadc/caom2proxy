@@ -1,6 +1,6 @@
-services: docker
-languages: python
+language: python
 python: 3.5
+services: docker
 sudo: false
 install:
     - pip install -U pip
