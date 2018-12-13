@@ -101,4 +101,3 @@ def get_observation(id):
     such observation does not exist
     """
     raise NotImplementedError('GET observation')
-

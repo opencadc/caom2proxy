@@ -69,12 +69,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from flask import Flask, Response
+from flask import Flask, Response, make_response
 from flask_restful import Resource, Api, reqparse
-from cadcutils.util import str2ivoa, date2ivoa
-from caom2 import Observation, ObservationWriter
+from cadcutils.util import str2ivoa
+from caom2 import ObservationWriter
 from io import BytesIO
-import os
 from collection import COLLECTION, list_observations, get_observation
 
 app = Flask(__name__)
@@ -114,7 +113,7 @@ class Caom23Obs(Resource):
 
 
 api.add_resource(Caom23ObsList, '/obs{}/{}'.format(CAOM_VERSION, COLLECTION))
-api.add_resource(Caom23Obs,'/obs{}/{}/<string:id>'.format(
+api.add_resource(Caom23Obs, '/obs{}/{}/<string:id>'.format(
     CAOM_VERSION, COLLECTION))
 
 
