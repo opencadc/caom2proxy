@@ -12,7 +12,7 @@ script:
          cd $i;
          py.test || exit 1;
          if [[ $TRAVIS_PYTHON_VERSION == '3.5' ]]; then
-         flake8 -v $i || exit -1;
+         flake8 -v image tests || exit -1;
          fi;
          cd ..;
          done
