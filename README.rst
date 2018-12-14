@@ -52,6 +52,7 @@ The format of the collection.py file is:
 The Dockerfile for the image is located in the image directory. To build the image:
 
 ::
+
     cd image
     docker build -t caom2proxy .
 
@@ -59,6 +60,7 @@ The Dockerfile for the image is located in the image directory. To build the ima
 To run the image:
 
 ::
+
     docker run --rm -p 5000:5000 -d  --name caom2proxy caom2proxy
 
 This maps the Web service to the 5000 local port.
@@ -67,6 +69,7 @@ This maps the Web service to the 5000 local port.
 Finally, to test the container:
 
 ::
+
    curl http://localhost:5000/obs23/collection/123
    curl http://localhost:5000/obs23/collection?maxrec=1000 
 
