@@ -1,0 +1,18 @@
+language: python
+python: 3.5
+services: docker
+sudo: false
+install:
+    - pip install -U pip
+    - for i in $(ls -d */); do cd $i; pip install -r dev_requirements.txt; cd ..; done
+      #- pip install coveralls
+
+script:
+    - for i in $(ls -d */); do
+         cd $i;
+         py.test || exit 1;
+         if [[ $TRAVIS_PYTHON_VERSION == '3.5' ]]; then
+         flake8 -v image tests || exit -1;
+         fi;
+         cd ..;
+         done
