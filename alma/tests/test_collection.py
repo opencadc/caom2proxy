@@ -72,7 +72,8 @@ from __future__ import (absolute_import, division, print_function,
 # collection specific code to return a list of observation IDs or a
 # specific CAOM2 observation
 
-from datetime import datetime
+import datetime
+import time
 import re
 import requests
 import mimetypes
@@ -80,13 +81,10 @@ from astroquery.alma import Alma
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
                   Part, Chunk, ObservationWriter, ProductType,\
                   ReleaseType, TypedList
-from cadcutils.util import date2ivoa
-import numpy as np
+
 
 
 COLLECTION = 'alma'
-
-ALMA_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 def list_observations(start=None, end=None, maxrec=None):
@@ -98,24 +96,12 @@ def list_observations(start=None, end=None, maxrec=None):
     :return: Comma separated list, each row consisting of ObservationID,
     last mod date.
     """
-    alma = Alma.query({})['Member ous id', 'Observation date']
-    np.unique(alma['Member ous id'])
-    tmp = {}
-    for row in alma:
-        d = datetime.strptime(row[1].decode('ascii'), ALMA_DATE_FORMAT)
-        if (start and start>d) or (end and end<d):
-            continue
-        if row['Member ous id'] not in tmp or d>tmp[row['Member ous id']]:
-            tmp[row['Member ous id']] = d
-    result = ['{}, {}\n'.format(_to_obs_id(w), date2ivoa(tmp[w])) for w in sorted(tmp, key=tmp.get)]
-    if maxrec:
-        return result[:maxrec]
-    else:
-        return result
+    alma = Alma.query({})
+    
+    for i in range(3):
+        yield "{}\n".format(datetime.datetime.now().isoformat())
+        time.sleep(1)
 
-
-def _to_obs_id(mid):
-    return mid.replace('uid://', '').replace('/', '_')
 
 def get_observation(id):
     """
@@ -201,3 +187,11 @@ def add_raw_artifact(plane, file_url):
     artifact = Artifact(file_uri, product_type, ReleaseType.META)
     plane.artifacts[file_uri] = artifact
 
+
+def test_collection():
+    import datetime
+    import time
+    time.
+    alma = Alma.query({})
+
+    print(alma)
