@@ -79,15 +79,21 @@ import mimetypes
 from astroquery.alma import Alma
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
                   Part, Chunk, ObservationWriter, ProductType,\
-                  ReleaseType, TypedList
+                  ReleaseType, TypedList, ObservationWriter
 from cadcutils.util import date2ivoa
 import numpy as np
+from six import BytesIO
+import logging
 
 
 COLLECTION = 'alma'
 
 ALMA_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+ALMA_QUERY_DATE_FORMAT = '%d-%m-%Y'
 
+
+logger = logging.getLogger('caom2proxy')
+logger.setLevel(logging.DEBUG)
 
 def list_observations(start=None, end=None, maxrec=None):
     """
@@ -98,24 +104,37 @@ def list_observations(start=None, end=None, maxrec=None):
     :return: Comma separated list, each row consisting of ObservationID,
     last mod date.
     """
-    alma = Alma.query({})['Member ous id', 'Observation date']
+    obs_date = {}
+    if start and end:
+        obs_date = '{} .. {}'.format(start.strftime(ALMA_QUERY_DATE_FORMAT),
+                                     end.strftime(ALMA_QUERY_DATE_FORMAT))
+    elif start:
+        obs_date = '>= {}'.format(start.strftime(ALMA_QUERY_DATE_FORMAT))
+    elif end:
+        obs_date = '<= {}'.format(end.strftime(ALMA_QUERY_DATE_FORMAT))
+
+    if obs_date:
+        obs_date = {'start_date': obs_date}
+    alma = Alma.query(obs_date)['Member ous id', 'Observation date']
     np.unique(alma['Member ous id'])
     tmp = {}
     for row in alma:
         d = datetime.strptime(row[1].decode('ascii'), ALMA_DATE_FORMAT)
-        if (start and start>d) or (end and end<d):
-            continue
         if row['Member ous id'] not in tmp or d>tmp[row['Member ous id']]:
             tmp[row['Member ous id']] = d
-    result = ['{}, {}\n'.format(_to_obs_id(w), date2ivoa(tmp[w])) for w in sorted(tmp, key=tmp.get)]
+    result = ['{}, {}\n'.format(_to_obs_id(w), date2ivoa(tmp[w]))
+              for w in sorted(tmp, key=tmp.get)]
     if maxrec:
         return result[:maxrec]
     else:
         return result
 
 
-def _to_obs_id(mid):
-    return mid.replace('uid://', '').replace('/', '_')
+def _to_obs_id(member_ouss_id):
+    return member_ouss_id.replace('uid://', '').replace('/', '_')
+
+def _to_member_ouss_id(obs_id):
+    return 'uid://{}'.format(obs_id.replace('_', '/'))
 
 def get_observation(id):
     """
@@ -124,7 +143,14 @@ def get_observation(id):
     :return: observation corresponding to the id or None if such
     such observation does not exist
     """
-    raise NotImplementedError('GET observation')
+    member_ouss_id = _to_member_ouss_id(id)
+    results = Alma.query({'member_ous_id': member_ouss_id})
+
+    source_names = []
+    for row in results:
+        source_names.append(row['Source name'])
+
+    return member2observation(member_ouss_id, source_names)
 
 
 a = Alma()

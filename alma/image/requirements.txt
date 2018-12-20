@@ -1,3 +1,4 @@
-astroquery
+#astroquery
+-e 'git+https://github.com/andamian/astroquery@master#egg=astroquery'
 cadcutils
 caom2

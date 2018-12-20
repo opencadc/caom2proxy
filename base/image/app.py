@@ -69,40 +69,68 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from flask import Flask, Response, make_response
+from flask import Flask, Response, make_response, stream_with_context
 from flask_restful import Resource, Api, reqparse
 from cadcutils.util import str2ivoa
 from caom2 import ObservationWriter
 from io import BytesIO
 from collection import COLLECTION, list_observations, get_observation
+import logging
 
 app = Flask(__name__)
-api = Api(app, default_mediatype='text/csv')
+api = Api(app, default_mediatype=None)
+
+
+logger = logging.getLogger('caom2proxy')
+logger.setLevel(logging.DEBUG)
 
 CAOM_VERSION = '23'
 
 
 @api.representation('text/csv')
 def output_csv(data, code, headers=None):
-    resp = make_response(str(data), code)
+    logger.debug("CSV representation")
+    t = Response(stream_with_context(data))
+    resp = make_response(t, code)
     resp.headers.extend(headers or {})
     return resp
 
+@api.representation('application/xml')
+def output_xml(data, code, headers=None):
+    """Makes a Flask response with a XML encoded body"""
+    logger.debug("XML representation")
+    resp = make_response(data, code)
+    resp.headers.extend(headers or {})
+    return resp
+
+#api.representations['application/xml'] = output_xml
+
+
 
 class Caom23ObsList(Resource):
+
+    def __init__(self, representations=None):
+        self.representations = representations
+        super(Caom23ObsList, self).__init__()
+
     def get(self):
+        logger.debug("list observations")
         parser = reqparse.RequestParser()
         parser.add_argument('maxrec', type=int, help='Maximum records')
         parser.add_argument('start', type=str2ivoa, help='Start date')
         parser.add_argument('end', type=str2ivoa, help='End date')
         args = parser.parse_args()
-        return Response(list_observations(args['start'], args['end'],
-                                          args['maxrec']))
+        return list_observations(args['start'], args['end'],
+                                             args['maxrec'])
 
 
 class Caom23Obs(Resource):
-    @api.representation('application/xml')
+    def __init__(self, representations=None):
+        self.representations = representations
+        super(Caom23Obs, self).__init__()
+
     def get(self, id):
+        logger.debug("get observation")
         obs = get_observation(id)
         if not obs:
             return 'Observation {}/{} not found'.format(COLLECTION, id), 404
@@ -112,9 +140,12 @@ class Caom23Obs(Resource):
         return output.getvalue().decode('utf-8')
 
 
-api.add_resource(Caom23ObsList, '/obs{}/{}'.format(CAOM_VERSION, COLLECTION))
+api.add_resource(Caom23ObsList, '/obs{}/{}'.format(CAOM_VERSION, COLLECTION),
+                 resource_class_kwargs={'representations': {'text/csv': output_csv}})
 api.add_resource(Caom23Obs, '/obs{}/{}/<string:id>'.format(
-    CAOM_VERSION, COLLECTION))
+    CAOM_VERSION, COLLECTION),
+                 resource_class_kwargs={
+                     'representations': {'application/xml': output_xml}})
 
 
 if __name__ == '__main__':
