@@ -78,8 +78,9 @@ import requests
 import mimetypes
 from astroquery.alma import Alma
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
-                  Part, Chunk, ObservationWriter, ProductType,\
-                  ReleaseType, TypedList, ObservationWriter
+                  Part, Chunk, ObservationWriter, ProductType, Position, \
+                  ReleaseType, TypedList, DataProductType, Proposal, CalibrationLevel, Target, TargetType, \
+    Instrument, Time, Energy, Polarization, PolarizationState, Algorithm, ObservationIntentType, Telescope
 from cadcutils.util import date2ivoa
 import numpy as np
 from six import BytesIO
@@ -90,6 +91,7 @@ COLLECTION = 'alma'
 
 ALMA_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 ALMA_QUERY_DATE_FORMAT = '%d-%m-%Y'
+ALMA_RELEASE_DATE_FORMAT = '%Y-%m-%d'
 
 
 logger = logging.getLogger('caom2proxy')
@@ -144,16 +146,18 @@ def get_observation(id):
     such observation does not exist
     """
     member_ouss_id = _to_member_ouss_id(id)
-    results = Alma.query({'member_ous_id': member_ouss_id})
+    #TODO temporary
+    #Alma.archive_url = 'http://almascience.eso.org'
+    results = Alma.query({'member_ous_id': member_ouss_id}, science=False)
 
-    source_names = []
-    for row in results:
-        source_names.append(row['Source name'])
-
-    return member2observation(member_ouss_id, source_names)
+    if not results:
+        logger.debug('No observation found for ID : {}'.format(member_ouss_id))
+        return None
+    return member2observation(member_ouss_id, results)
 
 
 a = Alma()
+#a.archive_url = 'http://almascience.eso.org'
 
 # member_ous = 'uid://A001/X888/Xc6'
 # artifacts = member2artifacts(member_ous)
@@ -172,29 +176,77 @@ a = Alma()
 
 # Code for proxy caom2 service
 
-def member2observation(member_ous, source_names):
+def member2observation(member_ous, rows):
     """ returns an observation object """
     observationID = (member_ous.replace('uid://', '')).replace('/', '_')
     observation = SimpleObservation('ALMA', observationID)
-    add_raw_plane(observation, member_ous)
-    for source_name in source_names:
-        add_calib_plane(observation, source_name)
-    return (observation)
+    for row in rows:
+        add_calib_plane(observation, row)
+    add_raw_plane(observation, member_ous, observation.meta_release)
+    # observation metadata is common amongst rows so get it from the first
+    # row
+    fr = rows[0]
+    observation.meta_release = \
+        datetime.strptime(fr['Observation date'].decode('ascii'),
+                          ALMA_DATE_FORMAT)
+    proposal = Proposal(fr['ASA_PROJECT_CODE'])
+    proposal.project = fr['Project code']
+    proposal.pi_name = fr['PI name']
+    proposal.title = fr['Project title']
+    proposal.keywords = set(fr['Science keyword'].split(','))
+    observation.proposal = proposal
+    instrument = Instrument('BAND {}'.format(row['Band'][0]))
+    observation.instrument = instrument
+    observation.algorithm = Algorithm('Exposure')
+    observation.intent = ObservationIntentType.SCIENCE
+    observation.telescope = \
+        Telescope('ALMA-{}'.format(row['Array'].decode('ascii')),
+                  2225142.18, -5440307.37, -2481029.852)
+    observation.target = Target(name='TBD', target_type=TargetType.OBJECT)
+    return observation
 
 
-def add_calib_plane(observation, source_name):
+def add_calib_plane(observation, row):
     """ Adds a calibrated plane to the observation """
     productID = re.sub('-$', '', (
-    re.sub('^-', '', ((re.sub('\W+', '-', source_name)).replace('--', '-')))))
+    re.sub('^-', '', ((re.sub('\W+', '-', row['Source name'])).
+                      replace('--', '-')))))
     plane = Plane(productID)
+    meta_release = \
+        datetime.strptime(row['Observation date'].decode('ascii'),
+                          ALMA_DATE_FORMAT)
+    if 'Observation date' in row:
+        meta_release = datetime.strptime(
+            row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT)
+    plane.meta_release = meta_release
+    tmp = row['Release date']
+    if isinstance(tmp, bytes):
+        tmp = tmp.decode('ascii')
+    #TODO bug in astroquery.alma
+    plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
+    position = Position()
+    position.resolution = row['Spatial resolution']
+    plane.position = position
+    #TODO energy = Energy()
+    time = Time()
+    time.exposure = row['Integration']
+    plane.time = time
+    polarization = Polarization()
+    polarization.polarization_states = \
+        [PolarizationState(i) for i in row['Pol products'].split()]
+    plane.polarization = polarization
+    plane.data_product_type = DataProductType.VISIBILITY
+    plane.calibration_level = CalibrationLevel.CALIBRATED
     observation.planes[productID] = plane
 
 
-def add_raw_plane(observation, member_ous):
+def add_raw_plane(observation, member_ous, meta_release):
     """ adds raw plane to observation """
     productID = observation.observation_id + '-raw'
     plane = Plane(productID)
     plane.artifacts = TypedOrderedDict(Artifact)
+    plane.meta_release = meta_release
+    plane.calibration_level = CalibrationLevel.RAW_INSTRUMENTAL
     observation.planes[productID] = plane
     add_raw_artifacts(plane, member_ous)
 

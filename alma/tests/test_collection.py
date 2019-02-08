@@ -83,9 +83,23 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 sys.path.insert(0, IMAGE_DIR)
 import collection
-
+#from caom2repo import CAOM2RepoClient
+#from cadcutils import net
+#import cadcutils
 
 def test_collection():
-    obs = collection.get_observation('A0001_X11a2_X11')
+    obs_id = 'A001_X6f_X10'
+    obs_id = 'A001_X144_Xef'
+    #client = CAOM2RepoClient(net.Subject(certificate='/Users/adriand/.ssl/cadcproxy.pem'),
+     #                        resource_id='ivo://cadc.nrc.ca/sc2repo')
+    obs = collection.get_observation(obs_id)
+    # try:
+    #     client.get_observation('ALMA', obs_id)
+    #     #client.post(obs)
+    # except cadcutils.exceptions.NotFoundException:
+    #     client.put_observation(obs)
     print(obs)
-    assert False
+    print("DONE")
+    #assert False
+
+#A0001_X11a2_X11 - proprietary data
