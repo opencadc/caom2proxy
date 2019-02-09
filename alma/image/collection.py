@@ -77,8 +77,9 @@ import re
 import requests
 import mimetypes
 from astroquery.alma import Alma
+from caom2.shape import SubInterval #TODO
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
-                  Part, Chunk, ObservationWriter, ProductType, Position, Circle, Point, Interval, \
+                  Part, Chunk, ObservationWriter, ProductType, Position, Circle, Point, Interval,\
                   ReleaseType, TypedList, DataProductType, Proposal, CalibrationLevel, Target, TargetType, \
     Instrument, Time, Energy, Polarization, PolarizationState, Algorithm, ObservationIntentType, Telescope
 from cadcutils.util import date2ivoa
@@ -230,6 +231,8 @@ def add_calib_plane(observation, row, table):
         row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
     time_ub = time_lb + time.exposure*u.second
     time_interval = Interval(time_lb.mjd, time_ub.mjd)
+    samples = SubInterval(time_lb.mjd, time_ub.mjd)
+    time_interval.samples = samples
     time.bounds = time_interval
     plane.time = time
     polarization = Polarization()
