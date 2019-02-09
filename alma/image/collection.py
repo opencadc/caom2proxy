@@ -78,13 +78,14 @@ import requests
 import mimetypes
 from astroquery.alma import Alma
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
-                  Part, Chunk, ObservationWriter, ProductType, Position, \
+                  Part, Chunk, ObservationWriter, ProductType, Position, Circle, Point, \
                   ReleaseType, TypedList, DataProductType, Proposal, CalibrationLevel, Target, TargetType, \
     Instrument, Time, Energy, Polarization, PolarizationState, Algorithm, ObservationIntentType, Telescope
 from cadcutils.util import date2ivoa
 import numpy as np
 from six import BytesIO
 import logging
+from astropy import units as u
 
 
 COLLECTION = 'alma'
@@ -176,16 +177,16 @@ a = Alma()
 
 # Code for proxy caom2 service
 
-def member2observation(member_ous, rows):
+def member2observation(member_ous, table):
     """ returns an observation object """
     observationID = (member_ous.replace('uid://', '')).replace('/', '_')
     observation = SimpleObservation('ALMA', observationID)
-    for row in rows:
-        add_calib_plane(observation, row)
+    for row in table:
+        add_calib_plane(observation, row, table)
     add_raw_plane(observation, member_ous, observation.meta_release)
     # observation metadata is common amongst rows so get it from the first
     # row
-    fr = rows[0]
+    fr = table[0]
     observation.meta_release = \
         datetime.strptime(fr['Observation date'].decode('ascii'),
                           ALMA_DATE_FORMAT)
@@ -206,7 +207,7 @@ def member2observation(member_ous, rows):
     return observation
 
 
-def add_calib_plane(observation, row):
+def add_calib_plane(observation, row, table):
     """ Adds a calibrated plane to the observation """
     productID = re.sub('-$', '', (
     re.sub('^-', '', ((re.sub('\W+', '-', row['Source name'])).
@@ -223,9 +224,16 @@ def add_calib_plane(observation, row):
     if isinstance(tmp, bytes):
         tmp = tmp.decode('ascii')
     #TODO bug in astroquery.alma
-    plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
+    # plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
     position = Position()
     position.resolution = row['Spatial resolution']
+    # Shape is circle
+    # make sure all units are degrees
+    ra = row['RA']*table['RA'].unit.to(u.deg)
+    dec = row['Dec'] * table['Dec'].unit.to(u.deg)
+    radius = row['Largest angular scale'] * table['Largest angular scale'].unit.to(u.deg)/2.0
+    circle = Circle(Point(ra, dec), radius)
+    position.bounds = circle
     plane.position = position
     #TODO energy = Energy()
     time = Time()
