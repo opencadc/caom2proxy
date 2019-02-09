@@ -78,7 +78,7 @@ import requests
 import mimetypes
 from astroquery.alma import Alma
 from caom2 import SimpleObservation, TypedOrderedDict, Plane, Artifact,\
-                  Part, Chunk, ObservationWriter, ProductType, Position, Circle, Point, \
+                  Part, Chunk, ObservationWriter, ProductType, Position, Circle, Point, Interval, \
                   ReleaseType, TypedList, DataProductType, Proposal, CalibrationLevel, Target, TargetType, \
     Instrument, Time, Energy, Polarization, PolarizationState, Algorithm, ObservationIntentType, Telescope
 from cadcutils.util import date2ivoa
@@ -86,6 +86,7 @@ import numpy as np
 from six import BytesIO
 import logging
 from astropy import units as u
+from astropy.time import Time as AstropyTime
 
 
 COLLECTION = 'alma'
@@ -158,22 +159,8 @@ def get_observation(id):
 
 
 a = Alma()
+# alternative mirror when main site doesn't work
 #a.archive_url = 'http://almascience.eso.org'
-
-# member_ous = 'uid://A001/X888/Xc6'
-# artifacts = member2artifacts(member_ous)
-# for artifact in artifacts:
-#     print('\t'.join(artifact))
-#
-# member_ous = 'uid://A001/X144_Xef'
-# artifacts = member2artifacts(member_ous)
-# for artifact in artifacts:
-#     print('\t'.join(artifact))
-#
-# member_ous = 'uid://A001/X11a2/X11'
-# source_names = ['AzTEC-3', 'J0948+0022', 'J1058+0133']
-# member2observation(member_ous, source_names)
-
 
 # Code for proxy caom2 service
 
@@ -183,13 +170,14 @@ def member2observation(member_ous, table):
     observation = SimpleObservation('ALMA', observationID)
     for row in table:
         add_calib_plane(observation, row, table)
-    add_raw_plane(observation, member_ous, observation.meta_release)
+
     # observation metadata is common amongst rows so get it from the first
     # row
     fr = table[0]
     observation.meta_release = \
         datetime.strptime(fr['Observation date'].decode('ascii'),
                           ALMA_DATE_FORMAT)
+    add_raw_plane(observation, member_ous, observation.meta_release)
     proposal = Proposal(fr['ASA_PROJECT_CODE'])
     proposal.project = fr['Project code']
     proposal.pi_name = fr['PI name']
@@ -231,13 +219,18 @@ def add_calib_plane(observation, row, table):
     # make sure all units are degrees
     ra = row['RA']*table['RA'].unit.to(u.deg)
     dec = row['Dec'] * table['Dec'].unit.to(u.deg)
-    radius = row['Largest angular scale'] * table['Largest angular scale'].unit.to(u.deg)/2.0
+    radius = row['Field of view'] * table['Field of view'].unit.to(u.deg)/2.0
     circle = Circle(Point(ra, dec), radius)
     position.bounds = circle
     plane.position = position
     #TODO energy = Energy()
     time = Time()
-    time.exposure = row['Integration']
+    time.exposure = row['Integration']*table['Integration'].unit.to(u.second)
+    time_lb = AstropyTime(datetime.strptime(
+        row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
+    time_ub = time_lb + time.exposure*u.second
+    time_interval = Interval(time_lb.mdj, time_ub.mdj)
+    time.bounds = time_interval
     plane.time = time
     polarization = Polarization()
     polarization.polarization_states = \

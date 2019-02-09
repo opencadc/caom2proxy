@@ -88,8 +88,8 @@ import collection
 #import cadcutils
 
 def test_collection():
-    obs_id = 'A001_X6f_X10'
-    obs_id = 'A001_X144_Xef'
+    obs_id = 'A001_X11a2_X11'
+    #obs_id = 'A001_X144_Xef'
     #client = CAOM2RepoClient(net.Subject(certificate='/Users/adriand/.ssl/cadcproxy.pem'),
      #                        resource_id='ivo://cadc.nrc.ca/sc2repo')
     obs = collection.get_observation(obs_id)
