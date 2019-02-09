@@ -232,7 +232,7 @@ def add_calib_plane(observation, row, table):
     time_ub = time_lb + time.exposure*u.second
     time_interval = Interval(time_lb.mjd, time_ub.mjd)
     samples = SubInterval(time_lb.mjd, time_ub.mjd)
-    time_interval.samples = samples
+    time_interval.samples = [samples]
     time.bounds = time_interval
     plane.time = time
     polarization = Polarization()
