@@ -229,7 +229,7 @@ def add_calib_plane(observation, row, table):
     time_lb = AstropyTime(datetime.strptime(
         row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
     time_ub = time_lb + time.exposure*u.second
-    time_interval = Interval(time_lb.mdj, time_ub.mdj)
+    time_interval = Interval(time_lb.mjd, time_ub.mjd)
     time.bounds = time_interval
     plane.time = time
     polarization = Polarization()
