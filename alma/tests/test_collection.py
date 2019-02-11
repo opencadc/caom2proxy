@@ -83,9 +83,23 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 sys.path.insert(0, IMAGE_DIR)
 import collection
+from collection import _add_subinterval
 #from caom2repo import CAOM2RepoClient
 #from cadcutils import net
 #import cadcutils
+
+
+def test_subintervals():
+    assert _add_subinterval([], (2, 6)) == [(2, 6)]
+    assert _add_subinterval([(7, 10)], (2, 6)) == [(2, 6), (7, 10)]
+    assert _add_subinterval([(2, 6)], (7, 10)) == [(2, 6), (7, 10)]
+    assert _add_subinterval([(2, 6)], (2, 6)) == [(2, 6)]
+    assert _add_subinterval([(2, 6)], (3, 5)) == [(2, 6)]
+    assert _add_subinterval([(7, 10)], (2, 8)) == [(2, 10)]
+    assert _add_subinterval([(2, 3), (6, 7)], (4, 5)) == [(2, 3), (4, 5), (6, 7)]
+    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (4, 8)) == [(2, 3), (4, 8)]
+    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
+
 
 def test_collection():
     obs_id = 'A001_X11a2_X11'

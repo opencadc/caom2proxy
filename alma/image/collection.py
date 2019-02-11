@@ -88,6 +88,7 @@ from six import BytesIO
 import logging
 from astropy import units as u
 from astropy.time import Time as AstropyTime
+import re
 
 
 COLLECTION = 'alma'
@@ -214,31 +215,12 @@ def add_calib_plane(observation, row, table):
         tmp = tmp.decode('ascii')
     #TODO bug in astroquery.alma
     # plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
-    position = Position()
-    position.resolution = row['Spatial resolution']
-    # Shape is circle
-    # make sure all units are degrees
-    ra = row['RA']*table['RA'].unit.to(u.deg)
-    dec = row['Dec'] * table['Dec'].unit.to(u.deg)
-    radius = row['Field of view'] * table['Field of view'].unit.to(u.deg)/2.0
-    circle = Circle(Point(ra, dec), radius)
-    position.bounds = circle
-    plane.position = position
-    #TODO energy = Energy()
-    time = Time()
-    time.exposure = row['Integration']*table['Integration'].unit.to(u.second)
-    time_lb = AstropyTime(datetime.strptime(
-        row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
-    time_ub = time_lb + time.exposure*u.second
-    time_interval = Interval(time_lb.mjd, time_ub.mjd)
-    samples = SubInterval(time_lb.mjd, time_ub.mjd)
-    time_interval.samples = [samples]
-    time.bounds = time_interval
-    plane.time = time
-    polarization = Polarization()
-    polarization.polarization_states = \
-        [PolarizationState(i) for i in row['Pol products'].split()]
-    plane.polarization = polarization
+
+    plane.position = _get_position(row, table)
+    plane.energy = _get_energy(row)
+    plane.time = _get_time(row, table)
+    plane.polarization = _get_polarization(row)
+
     plane.data_product_type = DataProductType.VISIBILITY
     plane.calibration_level = CalibrationLevel.CALIBRATED
     observation.planes[productID] = plane
@@ -283,3 +265,96 @@ def add_raw_artifact(plane, file_url):
     artifact = Artifact(file_uri, product_type, ReleaseType.META)
     plane.artifacts[file_uri] = artifact
 
+
+def _get_position(row, table):
+    # Extracts position from a returned row of the ALMA results table
+    position = Position()
+    position.resolution = row['Spatial resolution']
+    # Shape is circle
+    # make sure all units are degrees
+    ra = row['RA'] * table['RA'].unit.to(u.deg)
+    dec = row['Dec'] * table['Dec'].unit.to(u.deg)
+    radius = row['Field of view'] * table['Field of view'].unit.to(u.deg) / 2.0
+    circle = Circle(Point(ra, dec), radius)
+    position.bounds = circle
+    return position
+
+
+def _get_energy(row):
+    # Extracts the energy inform from a returned row
+    min_bound = None
+    max_bound = None
+    si = None # list of non-overlapping sub-intervals
+    for b in re.findall(r'\[([^]]*)\]', row['Frequency support']):
+        e_int = b.split(',')[0]
+        vals = e_int.split('..')
+        lower_freq = float(vals[0])
+        # upper string of form: 123.45GHz
+        upper_str = re.findall(r'\b\d+\.?\d+', vals[1])[0]
+        upper_freq = float(upper_str)
+        units = u.Unit(vals[1][len(upper_str):])
+        # wavelengths in meters:
+        lower = lower_freq * units.to(u.meter, equivalencies=u.spectral())
+        upper = upper_freq * units.to(u.meter, equivalencies=u.spectral())
+        si = _add_subinterval(si, (lower, upper))
+        if min_bound is not None:
+            min_bound = min(min_bound, lower)
+        else:
+            min_bound = lower
+        if max_bound is not None:
+            max_bound = max(max_bound, upper)
+        else:
+            max_bound = upper
+    samples = []
+    for s in si:
+        samples.append(SubInterval(s[0], s[1]))
+    bounds = Interval(min_bound, max_bound, samples=samples)
+    return Energy(bounds=bounds)
+
+
+def _add_subinterval(si_list, subinterval):
+    if not si_list:
+        return [subinterval]
+    # check for overlaps
+    # begining of the list?
+    if subinterval[1] < si_list[0][0]:
+        return [subinterval] + si_list
+    if subinterval[0] > si_list[-1][1]:
+        return si_list + [subinterval]
+    result = []
+    for si in si_list:
+        if (si[0] >= subinterval[0] and si[0] <= subinterval[1]) or\
+            (subinterval[0] >= si[0] and subinterval[0] <= si[1]):
+            # overlap detected
+            subinterval = (min(si[0], subinterval[0]),
+                           max(si[1], subinterval[1]))
+        else:
+            if subinterval[0] < si[0]:
+                result += [subinterval]
+                result += si_list[si_list.index(si):]
+                return result
+            else:
+                result += [si]
+    return result + [subinterval]
+
+
+def _get_time(row, table):
+    # Extracts time information from a rrow fo returned ALMA table
+    time = Time()
+    time.exposure = \
+        row['Integration'] * table['Integration'].unit.to(u.second)
+    time_lb = AstropyTime(datetime.strptime(
+        row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
+    time_ub = time_lb + time.exposure * u.second
+    time_interval = Interval(time_lb.mjd, time_ub.mjd)
+    samples = SubInterval(time_lb.mjd, time_ub.mjd)
+    time_interval.samples = [samples]
+    time.bounds = time_interval
+    return time
+
+def _get_polarization(row):
+    # Extracts polarization information from a row
+    polarization = Polarization()
+    polarization.polarization_states = \
+        [PolarizationState(i) for i in row['Pol products'].split()]
+    return polarization
