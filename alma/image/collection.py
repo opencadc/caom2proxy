@@ -294,8 +294,8 @@ def _get_energy(row):
         upper_freq = float(upper_str)
         units = u.Unit(vals[1][len(upper_str):])
         # wavelengths in meters:
-        lower = lower_freq * units.to(u.meter, equivalencies=u.spectral())
-        upper = upper_freq * units.to(u.meter, equivalencies=u.spectral())
+        upper = (lower_freq*units).to(u.meter, equivalencies=u.spectral()).value
+        lower = (upper_freq*units).to(u.meter, equivalencies=u.spectral()).value
         si = _add_subinterval(si, (lower, upper))
         if min_bound is not None:
             min_bound = min(min_bound, lower)
