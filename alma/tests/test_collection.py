@@ -72,21 +72,23 @@ from __future__ import (absolute_import, division, print_function,
 # collection specific code to return a list of observation IDs or a
 # specific CAOM2 observation
 
-import datetime
-import time
-import re
-import mimetypes
+from datetime import datetime
 import sys
 import os
 from caom2 import ObservationWriter
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 sys.path.insert(0, IMAGE_DIR)
+from caom2utils import caomvalidator
+from caom2 import obs_reader_writer
+from cadcutils.util import IVOA_DATE_FORMAT
 import collection
 from collection import _add_subinterval
-#from caom2repo import CAOM2RepoClient
-#from cadcutils import net
-#import cadcutils
+import tempfile
+import os
+
+
+ALMA_OBS_IDS = ['A001_X11a2_X11', 'A001_X144_Xef']
 
 
 def test_subintervals():
@@ -101,19 +103,38 @@ def test_subintervals():
     assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
 
 
-def test_collection():
-    obs_id = 'A001_X11a2_X11'
-    #obs_id = 'A001_X144_Xef'
-    #client = CAOM2RepoClient(net.Subject(certificate='/Users/adriand/.ssl/cadcproxy.pem'),
-     #                        resource_id='ivo://cadc.nrc.ca/sc2repo')
-    obs = collection.get_observation(obs_id)
-    # try:
-    #     client.get_observation('ALMA', obs_id)
-    #     #client.post(obs)
-    # except cadcutils.exceptions.NotFoundException:
-    #     client.put_observation(obs)
-    print(obs)
-    print("DONE")
-    #assert False
+def test_get_obs():
+    obs = collection.list_observations(start=datetime.strptime('01-01-2018', '%d-%m-%Y'),
+                                       end=datetime.strptime('02-01-2018', '%d-%m-%Y'))
 
-#A0001_X11a2_X11 - proprietary data
+
+    expected_obs = \
+        [('A001_X1288_X3fa', datetime.strptime('2018-01-01T01:55:28.000', IVOA_DATE_FORMAT)),
+         ('A001_X1288_Xba8', datetime.strptime('2018-01-01T06:57:42.000', IVOA_DATE_FORMAT)),
+         ('A001_X1296_X90b', datetime.strptime('2018-01-01T11:14:18.000', IVOA_DATE_FORMAT)),
+         ('A001_X12a2_Xf6', datetime.strptime('2018-01-01T13:45:50.000', IVOA_DATE_FORMAT)),
+         ('A001_X1296_X143', datetime.strptime('2018-01-01T14:38:18.000', IVOA_DATE_FORMAT)),
+         ('A001_X1296_X157', datetime.strptime('2018-01-01T15:37:00.000', IVOA_DATE_FORMAT)),
+         ('A001_X1288_X102', datetime.strptime('2018-01-01T16:31:20.000', IVOA_DATE_FORMAT)),
+         ('A001_X1284_X1917', datetime.strptime('2018-01-01T19:31:32.000', IVOA_DATE_FORMAT)),
+         ('A001_X1284_X191b', datetime.strptime('2018-01-01T19:52:30.000', IVOA_DATE_FORMAT)),
+         ('A001_X1284_X3e5', datetime.strptime('2018-01-01T20:25:01.000', IVOA_DATE_FORMAT))]
+
+    assert len(expected_obs) == len(obs)
+    for i, o in enumerate(obs):
+        fields = o.split(',')
+        assert expected_obs[i][0] == fields[0].strip()
+        assert expected_obs[i][1] == datetime.strptime(fields[1].strip(), IVOA_DATE_FORMAT)
+
+
+def test_collection():
+    # access ALMA to get a set of observations and verifies them
+    dir = tempfile.mkdtemp()
+    obs_file = os.path.join(dir, 'obs.xml')
+    writer = obs_reader_writer.ObservationWriter(validate=True)
+    for id in ALMA_OBS_IDS:
+        obs = collection.get_observation(id)
+        caomvalidator.validate(obs)
+        writer.write(obs, obs_file)
+
+
