@@ -98,33 +98,39 @@ def test_subintervals():
     assert _add_subinterval([(2, 6)], (2, 6)) == [(2, 6)]
     assert _add_subinterval([(2, 6)], (3, 5)) == [(2, 6)]
     assert _add_subinterval([(7, 10)], (2, 8)) == [(2, 10)]
-    assert _add_subinterval([(2, 3), (6, 7)], (4, 5)) == [(2, 3), (4, 5), (6, 7)]
-    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (4, 8)) == [(2, 3), (4, 8)]
+    assert _add_subinterval([(2, 3), (6, 7)], (4, 5)) == \
+           [(2, 3), (4, 5), (6, 7)]
+    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (4, 8)) == \
+           [(2, 3), (4, 8)]
     assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
 
 
 def test_get_obs():
-    obs = collection.list_observations(start=datetime.strptime('01-01-2018', '%d-%m-%Y'),
-                                       end=datetime.strptime('02-01-2018', '%d-%m-%Y'))
-
-
+    obs = collection.list_observations(start=datetime.strptime('02-01-2018',
+                                                               '%d-%m-%Y'),
+                                       end=datetime.strptime('03-01-2018',
+                                                             '%d-%m-%Y'))
     expected_obs = \
-        [('A001_X1288_X3fa', datetime.strptime('2018-01-01T01:55:28.000', IVOA_DATE_FORMAT)),
-         ('A001_X1288_Xba8', datetime.strptime('2018-01-01T06:57:42.000', IVOA_DATE_FORMAT)),
-         ('A001_X1296_X90b', datetime.strptime('2018-01-01T11:14:18.000', IVOA_DATE_FORMAT)),
-         ('A001_X12a2_Xf6', datetime.strptime('2018-01-01T13:45:50.000', IVOA_DATE_FORMAT)),
-         ('A001_X1296_X143', datetime.strptime('2018-01-01T14:38:18.000', IVOA_DATE_FORMAT)),
-         ('A001_X1296_X157', datetime.strptime('2018-01-01T15:37:00.000', IVOA_DATE_FORMAT)),
-         ('A001_X1288_X102', datetime.strptime('2018-01-01T16:31:20.000', IVOA_DATE_FORMAT)),
-         ('A001_X1284_X1917', datetime.strptime('2018-01-01T19:31:32.000', IVOA_DATE_FORMAT)),
-         ('A001_X1284_X191b', datetime.strptime('2018-01-01T19:52:30.000', IVOA_DATE_FORMAT)),
-         ('A001_X1284_X3e5', datetime.strptime('2018-01-01T20:25:01.000', IVOA_DATE_FORMAT))]
+        [('A001_X1284_X3d9', datetime.strptime('2018-01-02T20:01:21.532',
+                                               IVOA_DATE_FORMAT)),
+        ('A001_X1284_X190b', datetime.strptime('2018-01-02T21:24:52.300',
+                                               IVOA_DATE_FORMAT)),
+        ('A001_X1284_X263b', datetime.strptime('2018-01-02T21:41:59.078',
+                                               IVOA_DATE_FORMAT)),
+        ('A001_X1284_X3f5', datetime.strptime('2018-01-02T21:47:19.363',
+                                              IVOA_DATE_FORMAT))]
 
     assert len(expected_obs) == len(obs)
     for i, o in enumerate(obs):
         fields = o.split(',')
         assert expected_obs[i][0] == fields[0].strip()
-        assert expected_obs[i][1] == datetime.strptime(fields[1].strip(), IVOA_DATE_FORMAT)
+        assert expected_obs[i][1] == datetime.strptime(fields[1].strip(),
+                                                       IVOA_DATE_FORMAT)
+
+    obs = collection.list_observations(maxrec=10)
+    #TODO a bug https://github.com/opencadc/tap/issues/57 prevents this from
+    # working properly. Uncomment out when bug fix
+    #assert 10 == len(obs)
 
 
 def test_collection():
