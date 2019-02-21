@@ -82,9 +82,11 @@ from cadcutils.util import date2ivoa
 from six import BytesIO
 import logging
 from astropy import units as u
+from astropy import constants as const
 from astropy.time import Time as AstropyTime
 import re
 from astropy.io.votable import parse_single_table
+import copy
 
 
 COLLECTION = 'alma'
@@ -163,7 +165,7 @@ def get_observation(id):
     # TODO temporary disabled see ticket
     # https://help.almascience.org/index.php?/na/Tickets/Ticket/View/14715
     # Alma.archive_url = 'http://almascience.eso.org'
-    results = Alma.query({'member_ous_id': member_ouss_id}, science=False)
+    results = a.query({'member_ous_id': member_ouss_id}, science=False)
 
     if not results:
         logger.debug('No observation found for ID : {}'.format(member_ouss_id))
@@ -181,8 +183,7 @@ def member2observation(member_ous, table):
     """ returns an observation object """
     observationID = (member_ous.replace('uid://', '')).replace('/', '_')
     observation = caom2.SimpleObservation('ALMA', observationID)
-    for row in table:
-        add_calib_plane(observation, row, table)
+    add_calib_planes(observation, table)
 
     # observation metadata is common amongst rows so get it from the first
     # row
@@ -192,60 +193,100 @@ def member2observation(member_ous, table):
                           ALMA_DATE_FORMAT)
     add_raw_plane(observation, member_ous, observation.meta_release)
     proposal = caom2.Proposal(fr['ASA_PROJECT_CODE'])
-    proposal.project = fr['Project code']
     proposal.pi_name = fr['PI name']
     proposal.title = fr['Project title']
     proposal.keywords = set(fr['Science keyword'].split(','))
     observation.proposal = proposal
-    instrument = caom2.Instrument('BAND {}'.format(row['Band'][0]))
+    instrument = caom2.Instrument('Band {}'.format(fr['Band'][0]))
     observation.instrument = instrument
     observation.algorithm = caom2.Algorithm('Exposure')
     observation.intent = caom2.ObservationIntentType.SCIENCE
     observation.telescope = \
-        caom2.Telescope('ALMA-{}'.format(row['Array'].decode('ascii')),
+        caom2.Telescope('ALMA-{}'.format(fr['Array'].decode('ascii')),
                         2225142.18, -5440307.37, -2481029.852)
-    observation.target = caom2.Target(name='TBD',
-                                      target_type=caom2.TargetType.OBJECT)
+
+    # environment info
+    env = caom2.Environment()
+    env.tau = fr['PWV']/0.935 + 0.35
+    env.wavelength_tau = 350*u.um.to(u.meter)
+    observation.environment = env
+    target_name = _get_obs_target_name(table)
+    if target_name:
+        observation.target = caom2.Target(name=target_name,
+                                          target_type = caom2.TargetType.OBJECT)
     return observation
 
 
-def add_calib_plane(observation, row, table):
-    """ Adds a calibrated plane to the observation """
-    productID = \
-        re.sub('-$', '',
-               (re.sub('^-', '', ((re.sub('\W+', '-', row['Source name'])).
-                                  replace('--', '-')))))
-    plane = caom2.Plane(productID)
-    meta_release = \
-        datetime.strptime(row['Observation date'].decode('ascii'),
-                          ALMA_DATE_FORMAT)
-    if 'Observation date' in row:
-        meta_release = datetime.strptime(
-            row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT)
-    plane.meta_release = meta_release
-    tmp = row['Release date']
-    if isinstance(tmp, bytes):
-        tmp = tmp.decode('ascii')
-    # TODO bug in astroquery.alma
-    # plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
+def add_calib_planes(observation, table):
+    target_planes = 0  # number of target planes
+    target_plane = False
+    for row in table:
+        temp = row['Scan intent'].lower().replace(' ', '')
+        product_id = '{}-{}'.format(observation.observation_id, temp)
+        if 'target' == temp:
+            target_planes += 1
+            product_id += str(target_planes)
+            target_plane_id = product_id
+            target_plane = True
+        else:
+            target_plane = False
+        plane = caom2.Plane(product_id)
+        meta_release = \
+            datetime.strptime(row['Observation date'].decode('ascii'),
+                              ALMA_DATE_FORMAT)
+        if 'Observation date' in row:
+            meta_release = datetime.strptime(
+                row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT)
+        plane.meta_release = meta_release
+        tmp = row['Release date']
+        if isinstance(tmp, bytes):
+            tmp = tmp.decode('ascii')
+        # TODO bug in astroquery.alma
+        # plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
+        # TODO raise RuntimeError if release date in the future
 
-    plane.position = _get_position(row, table)
-    plane.energy = _get_energy(row)
-    plane.time = _get_time(row, table)
-    plane.polarization = _get_polarization(row)
+        plane.position = _get_position(row, table)
+        plane.energy = _get_energy(row, table)
+        plane.time = _get_time(row, table)
+        plane.polarization = _get_polarization(row)
 
-    plane.data_product_type = caom2.DataProductType.VISIBILITY
-    plane.calibration_level = caom2.CalibrationLevel.CALIBRATED
-    observation.planes[productID] = plane
+        if target_plane:
+            plane.data_product_type = caom2.DataProductType.VISIBILITY
+        else:
+            plane.data_product_type = caom2.DataProductType.CUBE
+        plane.calibration_level = caom2.CalibrationLevel.CALIBRATED
+        observation.planes[product_id] = plane
+    # fix product ID when only one target
+    if target_planes == 1:
+        p = observation.planes.pop(target_plane_id)
+        new_prod_id = target_plane_id[:-1]
+        p.product_id = new_prod_id
+        observation.planes[new_prod_id] = p
 
 
 def add_raw_plane(observation, member_ous, meta_release):
-    """ Adds raw plane to observation """
+    """ Adds raw plane to observation
+     NOTE: this is to be called after the calibration planes have been added"""
     productID = observation.observation_id + '-raw'
     plane = caom2.Plane(productID)
     plane.artifacts = caom2.TypedOrderedDict(caom2.Artifact)
     plane.meta_release = meta_release
     plane.calibration_level = caom2.CalibrationLevel.RAW_INSTRUMENTAL
+    # wcs is shared with the target plane except position which
+    # could consist in multiple disjoin areas that cannot be accurately
+    # represented. Exposure is the sum of all the exposures in the other planes
+    exposure = 0
+    done = False
+    for cp in observation.planes.values():
+        exposure += cp.time.exposure
+        if not done and 'target' in cp.product_id:
+            plane.energy = cp.energy
+            # need to make a copy in order to update the exposure later
+            plane.time = copy.deepcopy(cp.time)
+            plane.polarization = cp.polarization
+            done = True
+    plane.time.exposure = exposure
+    plane.data_product_type = caom2.DataProductType.VISIBILITY
     observation.planes[productID] = plane
     add_raw_artifacts(plane, member_ous)
 
@@ -270,13 +311,11 @@ def add_raw_artifact(plane, file_url):
     if 'asdm' in filename:
         product_type = caom2.ProductType.SCIENCE
         content_length = int(file_header.headers['Content-Length'])
-    else:
-        product_type = caom2.ProductType.AUXILIARY
-        content_length = None
-    artifact = caom2.Artifact(file_uri, product_type, caom2.ReleaseType.META,
-                              content_type=content_type,
-                              content_length=content_length)
-    plane.artifacts[file_uri] = artifact
+        artifact = caom2.Artifact(file_uri, product_type,
+                                  caom2.ReleaseType.META,
+                                  content_type=content_type,
+                                  content_length=content_length)
+        plane.artifacts[file_uri] = artifact
 
 
 def _get_position(row, table):
@@ -293,7 +332,7 @@ def _get_position(row, table):
     return position
 
 
-def _get_energy(row):
+def _get_energy(row, table):
     # Extracts the energy inform from a returned row
     min_bound = None
     max_bound = None
@@ -324,7 +363,11 @@ def _get_energy(row):
     for s in si:
         samples.append(SubInterval(s[0], s[1]))
     bounds = caom2.Interval(min_bound, max_bound, samples=samples)
-    return caom2.Energy(bounds=bounds)
+    resolving_power = \
+        const.c/row['Velocity resolution']*table['Velocity resolution'].\
+            unit.to(u.m/u.s)
+    return caom2.Energy(bounds=bounds, resolving_power=resolving_power.value,
+                        em_band=caom2.EnergyBand.MILLIMETER)
 
 
 def _add_subinterval(si_list, subinterval):
@@ -362,7 +405,8 @@ def _get_time(row, table):
     time.exposure = \
         row['Integration'] * table['Integration'].unit.to(u.second)
     time_lb = AstropyTime(datetime.strptime(
-        row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT))
+        row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT),
+        scale='utc')
     time_ub = time_lb + time.exposure * u.second
     time_interval = caom2.Interval(time_lb.mjd, time_ub.mjd)
     samples = SubInterval(time_lb.mjd, time_ub.mjd)
@@ -377,3 +421,20 @@ def _get_polarization(row):
     polarization.polarization_states = \
         [caom2.PolarizationState(i) for i in row['Pol products'].split()]
     return polarization
+
+
+def _get_obs_target_name(table):
+    # The target name is given by the "source name" of a target plane/row.
+    # If the observation has multiple target planes, target name is ''
+    # TODO A proposal has been made to push the "Target name" to the plane
+    # level in which case each plane will have on corresponding to the
+    # "Source name"
+    target_name = ''
+    for row in table:
+        if row['Scan intent'].lower() == 'target':
+            if target_name and target_name != row['Source name']:
+                # different target names, return empty string as we can't tell
+                return None
+            else:
+                target_name = row['Source name']
+    return target_name

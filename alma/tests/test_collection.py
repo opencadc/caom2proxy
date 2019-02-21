@@ -88,7 +88,7 @@ import tempfile
 import os
 
 
-ALMA_OBS_IDS = ['A001_X11a2_X11', 'A001_X144_Xef']
+ALMA_OBS_IDS = ['A001_X87d_X8bc', 'A001_X11a2_X11', 'A001_X144_Xef']
 
 
 def test_subintervals():
