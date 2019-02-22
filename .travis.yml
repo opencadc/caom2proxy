@@ -16,7 +16,7 @@ script:
     - for i in $(ls -d */); 
       do 
         cd $i; 
-        pytest tests --cov $i || exit -1;
+        pytest --cov tests || exit -1;
         flake8 -v $i || exit -1; 
         cd ..; 
      done
