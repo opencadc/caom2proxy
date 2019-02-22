@@ -9,7 +9,7 @@ sudo: false
 install:
     - pip install -U pip
     - pip install twine
-    - for i in $(ls -d */); do cd $i; pip install -r image/requirements.txt; pip install dev_requirements; cd ..; done
+    - for i in $(ls -d */); do cd $i; pip install -r image/requirements.txt; pip install -r dev_requirements; cd ..; done
     - pip install coveralls
 
 script:
