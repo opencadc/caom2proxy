@@ -1,18 +1,29 @@
 language: python
-python: 3.5
-services: docker
+
+python:
+    - 3.6
+
+# Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
+
 install:
     - pip install -U pip
-    - for i in $(ls -d */); do cd $i; pip install -r dev_requirements.txt; cd ..; done
-      #- pip install coveralls
+    - pip install twine
+    - for i in $(ls -d */); do cd $i; pip install -r image/requirements.txt; pip install dev_requirements; cd ..; done
+    - pip install coveralls
 
 script:
-    - for i in $(ls -d */); do
-         cd $i;
-         py.test || exit 1;
-         if [[ $TRAVIS_PYTHON_VERSION == '3.5' ]]; then
-         flake8 -v image tests || exit -1;
-         fi;
-         cd ..;
-         done
+    - for i in $(ls -d */); 
+      do 
+        cd $i; 
+        pytest tests --cov $i || exit -1;
+        flake8 -v $i || exit -1; 
+        cd ..; 
+     done
+
+after_success:
+    # If coveralls.io is set up for this package, uncomment the line
+    # below and replace "packagename" with the name of your package.
+    # The coveragerc file may be customized as needed for your package.
+    # Run coverage for all Python versions but submit only once - 3.6
+    - coverage combine $(ls -d */.coverage) || exit 1; coveralls 

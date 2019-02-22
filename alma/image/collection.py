@@ -104,18 +104,18 @@ logger.setLevel(logging.DEBUG)
 
 def list_observations(start=None, end=None, maxrec=None):
     """
-    List observations
-    :param start: start date (UTC)
-    :param end: end date (UTC)
+    List observations based on their observation dates
+    :param start: start observation date (UTC)
+    :param end: end observation date (UTC)
     :param maxrec: maximum number of rows to return
     :return: Comma separated list, each row consisting of ObservationID,
-    last mod date.
+    observation date.
     """
 
     where = ''
     if start or end:
         if start:
-            where = 'WHERE t_min>{}'.format(AstropyTime(start).mjd)
+            where = 'WHERE t_min>={}'.format(AstropyTime(start).mjd)
             if end:
                 where += ' AND t_min<={}'.format(AstropyTime(end).mjd)
         else:
@@ -145,7 +145,8 @@ def list_observations(start=None, end=None, maxrec=None):
 
 
 def _to_obs_id(member_ouss_id):
-    # transformation needed for use as path in URI
+    # transformation needed to make obs id compatible with the path of
+    # a URI as required by the CAOM2 model
     return member_ouss_id.replace('uid://', '').replace('/', '_')
 
 
@@ -162,10 +163,10 @@ def get_observation(id):
     such observation does not exist
     """
     member_ouss_id = _to_member_ouss_id(id)
-    # TODO temporary disabled see ticket
-    # https://help.almascience.org/index.php?/na/Tickets/Ticket/View/14715
+    # alternative ALMA mirror
     # Alma.archive_url = 'http://almascience.eso.org'
-    results = a.query({'member_ous_id': member_ouss_id}, science=False)
+    results = Alma().query({'member_ous_id': member_ouss_id}, science=False,
+                           cache=False, format='ascii')
 
     if not results:
         logger.debug('No observation found for ID : {}'.format(member_ouss_id))
@@ -173,15 +174,14 @@ def get_observation(id):
     return member2observation(member_ouss_id, results)
 
 
-a = Alma()
-# alternative mirror when main site doesn't work
-# a.archive_url = 'http://almascience.eso.org'
-
-
 # Code for proxy caom2 service
 def member2observation(member_ous, table):
-    """ returns an observation object """
-    observationID = (member_ous.replace('uid://', '')).replace('/', '_')
+    """
+    Turns the ALMA metadata corresponding to a member ous into
+    a CAOM2 observation.
+    """
+    observationID = _to_obs_id(member_ouss_id=member_ous)
+    logger.debug('observationID = {}'.format(observationID))
     observation = caom2.SimpleObservation('ALMA', observationID)
     add_calib_planes(observation, table)
 
@@ -213,7 +213,7 @@ def member2observation(member_ous, table):
     target_name = _get_obs_target_name(table)
     if target_name:
         observation.target = caom2.Target(name=target_name,
-                                          target_type = caom2.TargetType.OBJECT)
+                                          target_type=caom2.TargetType.OBJECT)
     return observation
 
 
@@ -265,15 +265,17 @@ def add_calib_planes(observation, table):
 
 
 def add_raw_plane(observation, member_ous, meta_release):
-    """ Adds raw plane to observation
-     NOTE: this is to be called after the calibration planes have been added"""
+    """
+    Adds raw plane to observation
+    NOTE: this is to be called after the calibration planes have been added
+    """
     productID = observation.observation_id + '-raw'
     plane = caom2.Plane(productID)
     plane.artifacts = caom2.TypedOrderedDict(caom2.Artifact)
     plane.meta_release = meta_release
     plane.calibration_level = caom2.CalibrationLevel.RAW_INSTRUMENTAL
     # wcs is shared with the target plane except position which
-    # could consist in multiple disjoin areas that cannot be accurately
+    # could consist in multiple disjoint areas that cannot be accurately
     # represented. Exposure is the sum of all the exposures in the other planes
     exposure = 0
     done = False
@@ -293,7 +295,7 @@ def add_raw_plane(observation, member_ous, meta_release):
 
 def add_raw_artifacts(plane, member_ous):
     """ Adds all the raw artifacts to the plane """
-    files = a.stage_data(member_ous)
+    files = Alma().stage_data(member_ous)
     file_urls = list(set(files['URL']))
     print('\n'.join(file_urls))
     for file_url in file_urls:
@@ -365,7 +367,7 @@ def _get_energy(row, table):
     bounds = caom2.Interval(min_bound, max_bound, samples=samples)
     resolving_power = \
         const.c/row['Velocity resolution']*table['Velocity resolution'].\
-            unit.to(u.m/u.s)
+        unit.to(u.m/u.s)
     return caom2.Energy(bounds=bounds, resolving_power=resolving_power.value,
                         em_band=caom2.EnergyBand.MILLIMETER)
 

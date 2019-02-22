@@ -72,21 +72,25 @@ from __future__ import (absolute_import, division, print_function,
 # collection specific code to return a list of observation IDs or a
 # specific CAOM2 observation
 
-from datetime import datetime
+
+
 import sys
 import os
-from caom2 import ObservationWriter
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 sys.path.insert(0, IMAGE_DIR)
+
+from datetime import datetime
 from caom2utils import caomvalidator
-from caom2 import obs_reader_writer
+from caom2 import obs_reader_writer, get_differences
 from cadcutils.util import IVOA_DATE_FORMAT
 import collection
 from collection import _add_subinterval
 import tempfile
 import os
 
+
+DATA_DIR = os.path.join(PARENT_DIR, 'tests', 'data')
 
 ALMA_OBS_IDS = ['A001_X87d_X8bc', 'A001_X11a2_X11', 'A001_X144_Xef']
 
@@ -99,9 +103,9 @@ def test_subintervals():
     assert _add_subinterval([(2, 6)], (3, 5)) == [(2, 6)]
     assert _add_subinterval([(7, 10)], (2, 8)) == [(2, 10)]
     assert _add_subinterval([(2, 3), (6, 7)], (4, 5)) == \
-           [(2, 3), (4, 5), (6, 7)]
+        [(2, 3), (4, 5), (6, 7)]
     assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (4, 8)) == \
-           [(2, 3), (4, 8)]
+        [(2, 3), (4, 8)]
     assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
 
 
@@ -113,12 +117,12 @@ def test_get_obs():
     expected_obs = \
         [('A001_X1284_X3d9', datetime.strptime('2018-01-02T20:01:21.532',
                                                IVOA_DATE_FORMAT)),
-        ('A001_X1284_X190b', datetime.strptime('2018-01-02T21:24:52.300',
-                                               IVOA_DATE_FORMAT)),
-        ('A001_X1284_X263b', datetime.strptime('2018-01-02T21:41:59.078',
-                                               IVOA_DATE_FORMAT)),
-        ('A001_X1284_X3f5', datetime.strptime('2018-01-02T21:47:19.363',
-                                              IVOA_DATE_FORMAT))]
+         ('A001_X1284_X190b', datetime.strptime('2018-01-02T21:24:52.300',
+                                                IVOA_DATE_FORMAT)),
+         ('A001_X1284_X263b', datetime.strptime('2018-01-02T21:41:59.078',
+                                                IVOA_DATE_FORMAT)),
+         ('A001_X1284_X3f5', datetime.strptime('2018-01-02T21:47:19.363',
+                                               IVOA_DATE_FORMAT))]
 
     assert len(expected_obs) == len(obs)
     for i, o in enumerate(obs):
@@ -128,19 +132,30 @@ def test_get_obs():
                                                        IVOA_DATE_FORMAT)
 
     obs = collection.list_observations(maxrec=10)
-    #TODO a bug https://github.com/opencadc/tap/issues/57 prevents this from
+    # TODO a bug https://github.com/opencadc/tap/issues/57 prevents this from
     # working properly. Uncomment out when bug fix
-    #assert 10 == len(obs)
+    # assert 10 == len(obs)
 
 
-def test_collection():
+def test_get_observation():
+    """
+    NOTE: This hits the ALMA service and it will only work with Internet
+    connection and the ALMA service being up and running.
+    :return:
+    """
     # access ALMA to get a set of observations and verifies them
     dir = tempfile.mkdtemp()
     obs_file = os.path.join(dir, 'obs.xml')
     writer = obs_reader_writer.ObservationWriter(validate=True)
+    reader = obs_reader_writer.ObservationReader()
     for id in ALMA_OBS_IDS:
         obs = collection.get_observation(id)
         caomvalidator.validate(obs)
+        # write it to a temporary file to make sure it passes the xml
+        # validation too
         writer.write(obs, obs_file)
 
-
+        # compare with what we are expecting
+        file = os.path.join(DATA_DIR, '{}.xml'.format(id))
+        expected_obs = reader.read(file)
+        assert not get_differences(expected_obs, obs)
