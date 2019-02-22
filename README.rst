@@ -44,7 +44,7 @@ this consists of the pytest package
 
 ::
 
-    echo 'pytest' > dev_requirements.txt
+    printf "pytest>=3.6\npytest-cov\nflake8\n" > dev_requirements.txt
 
 
 3. In the image subdirectory, create the image including the Dockerfile with
@@ -66,6 +66,7 @@ collection.py with the specific code (see `base <base>` for details)
 4. Create the unit tests in the tests directory. Data files required in the
 tests are located in tests/data
 
+
 5. Run tests
 
 ::
@@ -73,9 +74,9 @@ tests are located in tests/data
     pytest tests
 
 
-6. Build and check container (see `base <base>` for details)
+6. Build and check container (see `base <base>`_ for details)
 
-5. Check the style of the code
+7. Check the style of the code
 
 ::
 
@@ -83,7 +84,7 @@ tests are located in tests/data
     flake8 tests
 
 
-Details on how to implement an image can be found in the `base subproject<base>`.
+Details on how to implement an image can be found in the `base subproject<base>`_.
 
 To test a project, the environment needs to be set up first, followed by test
 invocation:
