@@ -17,7 +17,7 @@ script:
       do 
         cd $i; 
         pytest --cov tests || exit -1;
-        flake8 -v $i || exit -1; 
+        flake8 -v image tests || exit -1;
         cd ..; 
      done
 
