@@ -49,7 +49,7 @@ this consists of the pytest package
 
 3. In the image subdirectory, create the image including the Dockerfile with
 specific environment, requirements.txt file for the Python environment and
-collection.py with the specific code (see `base <base>` for details)
+collection.py with the specific code (see `base <base>`_ for details)
 
 ::
 
@@ -84,7 +84,7 @@ tests are located in tests/data
     flake8 tests
 
 
-Details on how to implement an image can be found in the `base subproject<base>`_.
+Details on how to implement an image can be found in the `base <base>`_.
 
 To test a project, the environment needs to be set up first, followed by test
 invocation:
