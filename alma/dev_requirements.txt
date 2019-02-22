@@ -1,4 +1,4 @@
+pytest-cov
 pytest
-pytest-cov>
 flake8>=3.4.1
 caom2utils
