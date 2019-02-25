@@ -2,14 +2,17 @@
 base
 ====
 
-This implements the base Web Service functionality of the proxy caom2 repo.
-To implement a data provider specific container using the image created
-in this project and overriding the collection.py file in the /app directory
-of the image.
+This package implements the base Web Service functionality of the proxy caom2
+repo. It creates a base Docker image that presents the REST API that the
+caom2Harvester application expects.
 
+Collection specific packages extend the base image by:
+1. providing their own python runtime environment in the requirements.txt file
+2. extending the interface in the collection.py with collection specific code
+that return observations in that collection.
 
-
-The format of the collection.py file is:
+The format of the collection.py file, and consequently the API that is to be
+used by a proxy, is:
 
 ::
 
@@ -46,7 +49,10 @@ The format of the collection.py file is:
         raise NotImplementedError('GET observation')
 
 
-The Dockerfile for the image is located in the image directory. To build the image:
+Collection proxies override the file in their image with the appropriate
+implementation.
+
+To build at Docker image:
 
 ::
 
