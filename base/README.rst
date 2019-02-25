@@ -7,6 +7,7 @@ repo. It creates a base Docker image that presents the REST API that the
 caom2Harvester application expects.
 
 Collection specific packages extend the base image by:
+
 1. providing their own python runtime environment in the requirements.txt file
 2. extending the interface in the collection.py with collection specific code
 that return observations in that collection.
@@ -49,7 +50,7 @@ used by a proxy, is:
         raise NotImplementedError('GET observation')
 
 
-Collection proxies override the file in their image with the appropriate
+Collection proxies override the file in their image with their own
 implementation.
 
 To build at Docker image:
