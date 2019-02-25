@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -102,9 +102,14 @@ logger = logging.getLogger('caom2proxy')
 logger.setLevel(logging.DEBUG)
 
 
+# This files overrides the base functionality provided in the
+# collection.py file of the proxy base docker image
+
 def list_observations(start=None, end=None, maxrec=None):
     """
-    List observations based on their observation dates
+    List observations based on their observation dates. It implements the
+    functionality required by the base proxy docker image for listing ALMA
+    observations
     :param start: start observation date (UTC)
     :param end: end observation date (UTC)
     :param maxrec: maximum number of rows to return
@@ -144,20 +149,11 @@ def list_observations(start=None, end=None, maxrec=None):
     return result
 
 
-def _to_obs_id(member_ouss_id):
-    # transformation needed to make obs id compatible with the path of
-    # a URI as required by the CAOM2 model
-    return member_ouss_id.replace('uid://', '').replace('/', '_')
-
-
-def _to_member_ouss_id(obs_id):
-    # reverse transformation
-    return 'uid://{}'.format(obs_id.replace('_', '/'))
-
-
 def get_observation(id):
     """
-    Return the observation corresponding to the id
+    Return the observation corresponding to the id. It is the ALMA
+    implementation of the get_observation function expected by the base
+    proxy alma docker image.
     :param id: id of the observation
     :return: observation corresponding to the id or None if such
     such observation does not exist
@@ -172,6 +168,17 @@ def get_observation(id):
         logger.debug('No observation found for ID : {}'.format(member_ouss_id))
         return None
     return member2observation(member_ouss_id, results)
+
+
+def _to_obs_id(member_ouss_id):
+    # transformation needed to make obs id compatible with the path of
+    # a URI as required by the CAOM2 model
+    return member_ouss_id.replace('uid://', '').replace('/', '_')
+
+
+def _to_member_ouss_id(obs_id):
+    # reverse transformation
+    return 'uid://{}'.format(obs_id.replace('_', '/'))
 
 
 # Code for proxy caom2 service

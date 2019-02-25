@@ -73,22 +73,22 @@ from __future__ import (absolute_import, division, print_function,
 # specific CAOM2 observation
 
 
-
 import sys
-import os
-PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
-sys.path.insert(0, IMAGE_DIR)
-
 from datetime import datetime
 from caom2utils import caomvalidator
 from caom2 import obs_reader_writer, get_differences
 from cadcutils.util import IVOA_DATE_FORMAT
-import collection
-from collection import _add_subinterval
 import tempfile
 import os
 
+
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
+sys.path.insert(0, IMAGE_DIR)
+
+# following imports need to occur after we've added collection.py to the path
+import collection  # noqa
+from collection import _add_subinterval  # noqa
 
 DATA_DIR = os.path.join(PARENT_DIR, 'tests', 'data')
 
