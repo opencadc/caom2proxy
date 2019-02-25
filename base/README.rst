@@ -8,9 +8,10 @@ caom2Harvester application expects.
 
 Collection specific packages extend the base image by:
 
-1. providing their own python runtime environment in the requirements.txt file
-2. extending the interface in the collection.py with collection specific code
-that return observations in that collection.
+    1. providing their own python runtime environment in the requirements.txt
+    file
+    2. extending the interface in the collection.py with collection specific
+    code that return observations in that collection.
 
 The format of the collection.py file, and consequently the API that is to be
 used by a proxy, is:
