@@ -146,6 +146,7 @@ def test_get_observation():
     # access ALMA to get a set of observations and verifies them
     dir = tempfile.mkdtemp()
     obs_file = os.path.join(dir, 'obs.xml')
+
     writer = obs_reader_writer.ObservationWriter(validate=True)
     reader = obs_reader_writer.ObservationReader()
     for id in ALMA_OBS_IDS:
@@ -154,8 +155,12 @@ def test_get_observation():
         # write it to a temporary file to make sure it passes the xml
         # validation too
         writer.write(obs, obs_file)
+        benchmark_obs_file = os.path.join(DATA_DIR, '{}.xml'.format(id))
+        # An easy way to update the benchmark files when the mapping algorithm
+        # is updated. Briefly uncomment the following line to update the
+        # files and comment it back after.
+        # writer.write(obs, benchmark_obs_file)
 
         # compare with what we are expecting
-        file = os.path.join(DATA_DIR, '{}.xml'.format(id))
-        expected_obs = reader.read(file)
+        expected_obs = reader.read(benchmark_obs_file)
         assert not get_differences(expected_obs, obs)

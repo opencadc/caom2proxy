@@ -101,9 +101,11 @@ ALMA_TAP_SYNC_URL = 'https://almascience.nrao.edu/tap/sync'
 logger = logging.getLogger('caom2proxy')
 logger.setLevel(logging.DEBUG)
 
+now = datetime.utcnow()
 
 # This files overrides the base functionality provided in the
 # collection.py file of the proxy base docker image
+
 
 def list_observations(start=None, end=None, maxrec=None):
     """
@@ -190,15 +192,17 @@ def member2observation(member_ous, table):
     observationID = _to_obs_id(member_ouss_id=member_ous)
     logger.debug('observationID = {}'.format(observationID))
     observation = caom2.SimpleObservation('ALMA', observationID)
-    add_calib_planes(observation, table)
+    cal_planes = get_calib_planes(observation, table)
 
+    add_raw_plane(observation, cal_planes,
+                  member_ous, observation.meta_release)
     # observation metadata is common amongst rows so get it from the first
     # row
     fr = table[0]
     observation.meta_release = \
         datetime.strptime(fr['Observation date'].decode('ascii'),
                           ALMA_DATE_FORMAT)
-    add_raw_plane(observation, member_ous, observation.meta_release)
+
     proposal = caom2.Proposal(fr['ASA_PROJECT_CODE'])
     proposal.pi_name = fr['PI name']
     proposal.title = fr['Project title']
@@ -221,19 +225,20 @@ def member2observation(member_ous, table):
     if target_name:
         observation.target = caom2.Target(name=target_name,
                                           target_type=caom2.TargetType.OBJECT)
+    observation.last_modified = now
+    observation.max_last_modified = now
     return observation
 
 
-def add_calib_planes(observation, table):
+def get_calib_planes(observation, table):
+    calib_planes = []
     target_planes = 0  # number of target planes
-    target_plane = False
     for row in table:
         temp = row['Scan intent'].lower().replace(' ', '')
         product_id = '{}-{}'.format(observation.observation_id, temp)
         if 'target' == temp:
             target_planes += 1
             product_id += str(target_planes)
-            target_plane_id = product_id
             target_plane = True
         else:
             target_plane = False
@@ -246,11 +251,21 @@ def add_calib_planes(observation, table):
                 row['Observation date'].decode('ascii'), ALMA_DATE_FORMAT)
         plane.meta_release = meta_release
         tmp = row['Release date']
-        if isinstance(tmp, bytes):
-            tmp = tmp.decode('ascii')
-        # TODO bug in astroquery.alma
-        # plane.data_release = datetime.strptime(tmp, ALMA_RELEASE_DATE_FORMAT)
-        # TODO raise RuntimeError if release date in the future
+        try:
+            if isinstance(tmp, bytes):
+                tmp = tmp.decode('ascii')
+            plane.data_release = datetime.strptime(tmp,
+                                                   ALMA_RELEASE_DATE_FORMAT)
+        except Exception as f:
+            msg = 'Observation {} - no valid release date: {}.'.\
+                format(observation.observation_id, tmp)
+            logger.debug(msg)
+            logger.debug(f)
+            raise RuntimeError(msg)
+        if plane.data_release > datetime.utcnow():
+            raise RuntimeError(
+                'Observation {} is proprietary. Release date: {}.'.
+                format(observation.observation_id, plane.data_release))
 
         plane.position = _get_position(row, table)
         plane.energy = _get_energy(row, table)
@@ -262,16 +277,13 @@ def add_calib_planes(observation, table):
         else:
             plane.data_product_type = caom2.DataProductType.CUBE
         plane.calibration_level = caom2.CalibrationLevel.CALIBRATED
-        observation.planes[product_id] = plane
-    # fix product ID when only one target
-    if target_planes == 1:
-        p = observation.planes.pop(target_plane_id)
-        new_prod_id = target_plane_id[:-1]
-        p.product_id = new_prod_id
-        observation.planes[new_prod_id] = p
+        plane.last_modified = now
+        plane.max_last_modified = now
+        calib_planes.append(plane)
+    return calib_planes
 
 
-def add_raw_plane(observation, member_ous, meta_release):
+def add_raw_plane(observation, cal_planes, member_ous, meta_release):
     """
     Adds raw plane to observation
     NOTE: this is to be called after the calibration planes have been added
@@ -286,7 +298,7 @@ def add_raw_plane(observation, member_ous, meta_release):
     # represented. Exposure is the sum of all the exposures in the other planes
     exposure = 0
     done = False
-    for cp in observation.planes.values():
+    for cp in cal_planes:
         exposure += cp.time.exposure
         if not done and 'target' in cp.product_id:
             plane.energy = cp.energy
@@ -296,6 +308,8 @@ def add_raw_plane(observation, member_ous, meta_release):
             done = True
     plane.time.exposure = exposure
     plane.data_product_type = caom2.DataProductType.VISIBILITY
+    plane.last_modified = now
+    plane.max_last_modified = now
     observation.planes[productID] = plane
     add_raw_artifacts(plane, member_ous)
 
@@ -317,14 +331,18 @@ def add_raw_artifact(plane, file_url):
     content_type = file_header.headers['Content-Type']
     if content_type == '':
         content_type = mimetypes.guess_type(file_url)[0]
-    if 'asdm' in filename:
-        product_type = caom2.ProductType.SCIENCE
-        content_length = int(file_header.headers['Content-Length'])
-        artifact = caom2.Artifact(file_uri, product_type,
-                                  caom2.ReleaseType.META,
-                                  content_type=content_type,
-                                  content_length=content_length)
-        plane.artifacts[file_uri] = artifact
+    product_type = caom2.ProductType.SCIENCE
+    artifact = caom2.Artifact(file_uri, product_type,
+                              caom2.ReleaseType.META,
+                              content_type=content_type)
+    try:
+        artifact.content_length = int(file_header.headers['Content-Length'])
+    except KeyError:
+        # not content length returned
+        pass
+    artifact.last_modified = now
+    artifact.max_last_modified = now
+    plane.artifacts[file_uri] = artifact
 
 
 def _get_position(row, table):

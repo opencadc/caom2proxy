@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="00000000-0000-0000-a259-5a62c102d649">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="00000000-0000-0000-aad5-a25228a55ea3" caom2:lastModified="2019-02-27T21:24:34.600" caom2:maxLastModified="2019-02-27T21:24:34.600">
   <caom2:collection>ALMA</caom2:collection>
   <caom2:observationID>A001_X11a2_X11</caom2:observationID>
   <caom2:metaRelease>2017-03-25T01:40:24.000</caom2:metaRelease>
@@ -34,171 +34,8 @@
     <caom2:wavelengthTau>0.00035</caom2:wavelengthTau>
   </caom2:environment>
   <caom2:planes>
-    <caom2:plane caom2:id="00000000-0000-0000-9a4d-279bde7ad3e5">
-      <caom2:productID>A001_X11a2_X11-phasewvr</caom2:productID>
-      <caom2:metaRelease>2017-03-25T01:40:24.000</caom2:metaRelease>
-      <caom2:dataProductType>cube</caom2:dataProductType>
-      <caom2:calibrationLevel>2</caom2:calibrationLevel>
-      <caom2:position>
-        <caom2:bounds xsi:type="caom2:Circle">
-          <caom2:center>
-            <caom2:cval1>147.23883369998777</caom2:cval1>
-            <caom2:cval2>0.37376649999999684</caom2:cval2>
-          </caom2:center>
-          <caom2:radius>0.0035446672038158085</caom2:radius>
-        </caom2:bounds>
-        <caom2:resolution>1.3813025976638584</caom2:resolution>
-      </caom2:position>
-      <caom2:energy>
-        <caom2:bounds>
-          <caom2:lower>0.0011674615756065267</caom2:lower>
-          <caom2:upper>0.0012654276223038287</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>0.0011674615756065267</caom2:lower>
-              <caom2:upper>0.0011847631125513755</caom2:upper>
-            </caom2:sample>
-            <caom2:sample>
-              <caom2:lower>0.001245709540430483</caom2:lower>
-              <caom2:upper>0.0012654276223038287</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:resolvingPower>65726.8767161206</caom2:resolvingPower>
-        <caom2:emBand>Millimeter</caom2:emBand>
-      </caom2:energy>
-      <caom2:time>
-        <caom2:bounds>
-          <caom2:lower>57837.06972222222</caom2:lower>
-          <caom2:upper>57837.07182222222</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>57837.06972222222</caom2:lower>
-              <caom2:upper>57837.07182222222</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:exposure>181.44</caom2:exposure>
-      </caom2:time>
-      <caom2:polarization>
-        <caom2:states>
-          <caom2:state>XX</caom2:state>
-          <caom2:state>YY</caom2:state>
-        </caom2:states>
-      </caom2:polarization>
-      <caom2:artifacts/>
-    </caom2:plane>
-    <caom2:plane caom2:id="00000000-0000-0000-92a3-450d0e1a93e5">
-      <caom2:productID>A001_X11a2_X11-bandpassfluxwvr</caom2:productID>
-      <caom2:metaRelease>2017-03-25T01:40:24.000</caom2:metaRelease>
-      <caom2:dataProductType>cube</caom2:dataProductType>
-      <caom2:calibrationLevel>2</caom2:calibrationLevel>
-      <caom2:position>
-        <caom2:bounds xsi:type="caom2:Circle">
-          <caom2:center>
-            <caom2:cval1>164.62335416662103</caom2:cval1>
-            <caom2:cval2>1.5663400000005478</caom2:cval2>
-          </caom2:center>
-          <caom2:radius>0.0035446672038158085</caom2:radius>
-        </caom2:bounds>
-        <caom2:resolution>1.5010304588190118</caom2:resolution>
-      </caom2:position>
-      <caom2:energy>
-        <caom2:bounds>
-          <caom2:lower>0.0011674615756065267</caom2:lower>
-          <caom2:upper>0.0012654276223038287</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>0.0011674615756065267</caom2:lower>
-              <caom2:upper>0.0011847631125513755</caom2:upper>
-            </caom2:sample>
-            <caom2:sample>
-              <caom2:lower>0.001245709540430483</caom2:lower>
-              <caom2:upper>0.0012654276223038287</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:resolvingPower>65726.8767161206</caom2:resolvingPower>
-        <caom2:emBand>Millimeter</caom2:emBand>
-      </caom2:energy>
-      <caom2:time>
-        <caom2:bounds>
-          <caom2:lower>57837.06972222222</caom2:lower>
-          <caom2:upper>57837.07322222222</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>57837.06972222222</caom2:lower>
-              <caom2:upper>57837.07322222222</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:exposure>302.4</caom2:exposure>
-      </caom2:time>
-      <caom2:polarization>
-        <caom2:states>
-          <caom2:state>XX</caom2:state>
-          <caom2:state>YY</caom2:state>
-        </caom2:states>
-      </caom2:polarization>
-      <caom2:artifacts/>
-    </caom2:plane>
-    <caom2:plane caom2:id="00000000-0000-0000-9c01-d56aa80217fb">
-      <caom2:productID>A001_X11a2_X11-target</caom2:productID>
-      <caom2:metaRelease>2017-03-25T01:40:24.000</caom2:metaRelease>
-      <caom2:dataProductType>visibility</caom2:dataProductType>
-      <caom2:calibrationLevel>2</caom2:calibrationLevel>
-      <caom2:position>
-        <caom2:bounds xsi:type="caom2:Circle">
-          <caom2:center>
-            <caom2:cval1>150.08624999998295</caom2:cval1>
-            <caom2:cval2>2.5890300000001023</caom2:cval2>
-          </caom2:center>
-          <caom2:radius>0.0035446672038158085</caom2:radius>
-        </caom2:bounds>
-        <caom2:resolution>1.3801384690814213</caom2:resolution>
-      </caom2:position>
-      <caom2:energy>
-        <caom2:bounds>
-          <caom2:lower>0.0011674615756065267</caom2:lower>
-          <caom2:upper>0.0012654276223038287</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>0.0011674615756065267</caom2:lower>
-              <caom2:upper>0.0011847631125513755</caom2:upper>
-            </caom2:sample>
-            <caom2:sample>
-              <caom2:lower>0.001245709540430483</caom2:lower>
-              <caom2:upper>0.0012654276223038287</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:resolvingPower>65726.8767161206</caom2:resolvingPower>
-        <caom2:emBand>Millimeter</caom2:emBand>
-      </caom2:energy>
-      <caom2:time>
-        <caom2:bounds>
-          <caom2:lower>57837.06972222222</caom2:lower>
-          <caom2:upper>57837.09072222222</caom2:upper>
-          <caom2:samples>
-            <caom2:sample>
-              <caom2:lower>57837.06972222222</caom2:lower>
-              <caom2:upper>57837.09072222222</caom2:upper>
-            </caom2:sample>
-          </caom2:samples>
-        </caom2:bounds>
-        <caom2:exposure>1814.4</caom2:exposure>
-      </caom2:time>
-      <caom2:polarization>
-        <caom2:states>
-          <caom2:state>XX</caom2:state>
-          <caom2:state>YY</caom2:state>
-        </caom2:states>
-      </caom2:polarization>
-      <caom2:artifacts/>
-    </caom2:plane>
-    <caom2:plane caom2:id="00000000-0000-0000-b17d-ff25e18f0d2b">
+    <caom2:plane caom2:id="00000000-0000-0000-8ba3-4eb0ef124485" caom2:lastModified="2019-02-27T21:24:34.600" caom2:maxLastModified="2019-02-27T21:24:34.600">
       <caom2:productID>A001_X11a2_X11-raw</caom2:productID>
-      <caom2:metaRelease>2017-03-25T01:40:24.000</caom2:metaRelease>
       <caom2:dataProductType>visibility</caom2:dataProductType>
       <caom2:calibrationLevel>0</caom2:calibrationLevel>
       <caom2:energy>
@@ -239,7 +76,14 @@
         </caom2:states>
       </caom2:polarization>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="00000000-0000-0000-b6cf-5c3f381e94bb">
+        <caom2:artifact caom2:id="00000000-0000-0000-9d2c-03f5219e1057" caom2:lastModified="2019-02-27T21:24:34.600" caom2:maxLastModified="2019-02-27T21:24:34.600">
+          <caom2:uri>alma:ALMA/2016.1.00330.S_uid___A001_X11a2_X11_001_of_001.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-a36f-a8fb9748962f" caom2:lastModified="2019-02-27T21:24:34.600" caom2:maxLastModified="2019-02-27T21:24:34.600">
           <caom2:uri>alma:ALMA/2016.1.00330.S_uid___A002_Xbe5932_X1015.asdm.sdm.tar</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>meta</caom2:releaseType>
