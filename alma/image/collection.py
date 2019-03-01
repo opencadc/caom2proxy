@@ -89,7 +89,7 @@ from astropy.io.votable import parse_single_table
 import copy
 
 
-COLLECTION = 'alma'
+COLLECTION = 'ALMA'
 
 ALMA_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 ALMA_QUERY_DATE_FORMAT = '%d-%m-%Y'
@@ -146,7 +146,7 @@ def list_observations(start=None, end=None, maxrec=None):
     for r in obs_ids.array:
         obsID = _to_obs_id(r[0].decode('ascii'))
         timestamp = date2ivoa(AstropyTime(r[1], format='mjd').datetime)
-        result.append('{}, {}\n'.format(obsID, timestamp))
+        result.append('{}\t{}\t{}\n'.format(COLLECTION, obsID, timestamp))
 
     return result
 
@@ -194,15 +194,14 @@ def member2observation(member_ous, table):
     observation = caom2.SimpleObservation('ALMA', observationID)
     cal_planes = get_calib_planes(observation, table)
 
-    add_raw_plane(observation, cal_planes,
-                  member_ous, observation.meta_release)
     # observation metadata is common amongst rows so get it from the first
     # row
     fr = table[0]
     observation.meta_release = \
         datetime.strptime(fr['Observation date'].decode('ascii'),
                           ALMA_DATE_FORMAT)
-
+    add_raw_plane(observation, cal_planes,
+                  member_ous, observation.meta_release)
     proposal = caom2.Proposal(fr['ASA_PROJECT_CODE'])
     proposal.pi_name = fr['PI name']
     proposal.title = fr['Project title']

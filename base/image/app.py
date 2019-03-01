@@ -69,7 +69,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from flask import Flask, Response, make_response, stream_with_context
+from flask import Flask, Response, make_response, stream_with_context, request
 from flask_restful import Resource, Api, reqparse
 from cadcutils.util import str2ivoa
 from caom2 import ObservationWriter
@@ -95,6 +95,7 @@ def output_csv(data, code, headers=None):
     resp.headers.extend(headers or {})
     return resp
 
+
 @api.representation('application/xml')
 def output_xml(data, code, headers=None):
     """Makes a Flask response with a XML encoded body"""
@@ -102,9 +103,6 @@ def output_xml(data, code, headers=None):
     resp = make_response(data, code)
     resp.headers.extend(headers or {})
     return resp
-
-#api.representations['application/xml'] = output_xml
-
 
 
 class Caom23ObsList(Resource):
@@ -121,7 +119,7 @@ class Caom23ObsList(Resource):
         parser.add_argument('end', type=str2ivoa, help='End date')
         args = parser.parse_args()
         return list_observations(args['start'], args['end'],
-                                             args['maxrec'])
+                                 args['maxrec'])
 
 
 class Caom23Obs(Resource):
@@ -140,10 +138,87 @@ class Caom23Obs(Resource):
         return output.getvalue().decode('utf-8')
 
 
-api.add_resource(Caom23ObsList, '/obs{}/{}'.format(CAOM_VERSION, COLLECTION),
-                 resource_class_kwargs={'representations': {'text/csv': output_csv}})
-api.add_resource(Caom23Obs, '/obs{}/{}/<string:id>'.format(
-    CAOM_VERSION, COLLECTION),
+class Capabilities23(Resource):
+    def __init__(self, representations=None):
+        self.representations = representations
+        super(Capabilities23, self).__init__()
+
+    def get(self):
+        logger.debug("get capabilities")
+        base_url = request.base_url[:-12]  # drops /capabilities from url
+        capabilities_doc = \
+            """
+            <vosi:capabilities
+            xmlns:vosi="http://www.ivoa.net/xml/VOSICapabilities/v1.0"
+            xmlns:vs="http://www.ivoa.net/xml/VODataService/v1.1"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <capability standardID="ivo://ivoa.net/std/VOSI#capabilities">
+                    <interface xsi:type="vs:ParamHTTP" role="std">
+                        <accessURL use="full">
+                            {0}capabilities
+                        </accessURL>
+                    </interface>
+                </capability>
+                <capability standardID="ivo://ivoa.net/std/VOSI#availability">
+                    <interface xsi:type="vs:ParamHTTP" role="std">
+                        <accessURL use="full">
+                            {0}availability
+                        </accessURL>
+                    </interface>
+                </capability>
+                <capability
+                standardID="vos://cadc.nrc.ca~vospace/CADC/std/CAOM2Repository#obs-1.1">
+                    <interface xsi:type="vs:ParamHTTP" role="std">
+                        <accessURL use="base">
+                            {0}obs{1}
+                        </accessURL>
+                    </interface>
+                </capability>
+            </vosi:capabilities>
+            """.format(base_url, CAOM_VERSION)
+        return capabilities_doc
+
+
+class Availability(Resource):
+
+    def __init__(self, representations=None):
+        self.representations = representations
+        super(Availability, self).__init__()
+
+    def get(self):
+        logger.debug("Check availability")
+        available = False
+        avail_text = 'service is down'
+        try:
+            if list_observations(maxrec=1):
+                available = True
+                avail_text = 'service is accepting queries'
+        except Exception:
+            pass
+
+        doc = \
+            """
+            <vosi:availability
+            xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">
+                <vosi:available>{}</vosi:available>
+                <vosi:note>{}</vosi:note>
+            </vosi:availability>
+            """.format(available, avail_text)
+        return doc
+
+
+api.add_resource(Caom23ObsList, '/{}/obs{}/{}'.format(
+    COLLECTION.lower(), CAOM_VERSION, COLLECTION),
+                 resource_class_kwargs={
+                     'representations': {'text/csv': output_csv}})
+api.add_resource(Caom23Obs, '/{}/obs{}/{}/<string:id>'.format(
+    COLLECTION.lower(), CAOM_VERSION, COLLECTION),
+                 resource_class_kwargs={
+                     'representations': {'application/xml': output_xml}})
+api.add_resource(Capabilities23, '/{}/capabilities'.format(COLLECTION.lower()),
+                 resource_class_kwargs={
+                     'representations': {'application/xml': output_xml}})
+api.add_resource(Availability, '/{}/availability'.format(COLLECTION.lower()),
                  resource_class_kwargs={
                      'representations': {'application/xml': output_xml}})
 
