@@ -95,13 +95,16 @@ ALMA_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 ALMA_QUERY_DATE_FORMAT = '%d-%m-%Y'
 ALMA_RELEASE_DATE_FORMAT = '%Y-%m-%d'
 
-ALMA_TAP_SYNC_URL = 'https://almascience.nrao.edu/tap/sync'
+# TODO temporary until fix for https://github.com/opencadc/tap/issues/57
+# installed at Alma
+# ALMA_TAP_SYNC_URL = 'https://almascience.nrao.edu/tap/sync'
+ALMA_TAP_SYNC_URL = \
+    'http://beta.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/alma-obscore/sync'
 
 
-logger = logging.getLogger('caom2proxy')
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-now = datetime.utcnow()
 
 # This files overrides the base functionality provided in the
 # collection.py file of the proxy base docker image
@@ -190,8 +193,9 @@ def member2observation(member_ous, table):
     a CAOM2 observation.
     """
     observationID = _to_obs_id(member_ouss_id=member_ous)
-    logger.debug('observationID = {}'.format(observationID))
     observation = caom2.SimpleObservation('ALMA', observationID)
+    observation.last_modified = observation.max_last_modified = \
+        _get_min_obsdate(table)
     cal_planes = get_calib_planes(observation, table)
 
     # observation metadata is common amongst rows so get it from the first
@@ -224,8 +228,6 @@ def member2observation(member_ous, table):
     if target_name:
         observation.target = caom2.Target(name=target_name,
                                           target_type=caom2.TargetType.OBJECT)
-    observation.last_modified = now
-    observation.max_last_modified = now
     return observation
 
 
@@ -262,9 +264,11 @@ def get_calib_planes(observation, table):
             logger.debug(f)
             raise RuntimeError(msg)
         if plane.data_release > datetime.utcnow():
-            raise RuntimeError(
+            ex = RuntimeError(
                 'Observation {} is proprietary. Release date: {}.'.
                 format(observation.observation_id, plane.data_release))
+            ex.status_code = 403
+            raise ex
 
         plane.position = _get_position(row, table)
         plane.energy = _get_energy(row, table)
@@ -276,8 +280,8 @@ def get_calib_planes(observation, table):
         else:
             plane.data_product_type = caom2.DataProductType.CUBE
         plane.calibration_level = caom2.CalibrationLevel.CALIBRATED
-        plane.last_modified = now
-        plane.max_last_modified = now
+        plane.last_modified = observation.max_last_modified
+        plane.max_last_modified = observation.max_last_modified
         calib_planes.append(plane)
     return calib_planes
 
@@ -307,14 +311,15 @@ def add_raw_plane(observation, cal_planes, member_ous, meta_release):
             done = True
     plane.time.exposure = exposure
     plane.data_product_type = caom2.DataProductType.VISIBILITY
-    plane.last_modified = now
-    plane.max_last_modified = now
+    plane.last_modified = observation.max_last_modified
+    plane.max_last_modified = observation.max_last_modified
     observation.planes[productID] = plane
     add_raw_artifacts(plane, member_ous)
 
 
 def add_raw_artifacts(plane, member_ous):
     """ Adds all the raw artifacts to the plane """
+    logger.info("Staging artifacts for plane {}".format(plane.product_id))
     files = Alma().stage_data(member_ous)
     file_urls = list(set(files['URL']))
     print('\n'.join(file_urls))
@@ -339,8 +344,8 @@ def add_raw_artifact(plane, file_url):
     except KeyError:
         # not content length returned
         pass
-    artifact.last_modified = now
-    artifact.max_last_modified = now
+    artifact.last_modified = plane.max_last_modified
+    artifact.max_last_modified = plane.max_last_modified
     plane.artifacts[file_uri] = artifact
 
 
@@ -423,6 +428,18 @@ def _add_subinterval(si_list, subinterval):
             else:
                 result += [si]
     return result + [subinterval]
+
+
+def _get_min_obsdate(table):
+    obsdate = None
+    for row in table:
+        t = datetime.strptime(row['Observation date'].decode('ascii'),
+                              ALMA_DATE_FORMAT)
+        if not obsdate:
+            obsdate = t
+        elif t < obsdate:
+            obsdate = t
+    return obsdate
 
 
 def _get_time(row, table):

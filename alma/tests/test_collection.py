@@ -80,6 +80,7 @@ from caom2 import obs_reader_writer, get_differences
 from cadcutils.util import IVOA_DATE_FORMAT
 import tempfile
 import os
+import pytest
 
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -93,6 +94,7 @@ from collection import _add_subinterval  # noqa
 DATA_DIR = os.path.join(PARENT_DIR, 'tests', 'data')
 
 ALMA_OBS_IDS = ['A001_X87d_X8bc', 'A001_X11a2_X11', 'A001_X144_Xef']
+ALMA_PROPRIETARY_OBS_IDS = ['A001_X2cf_X15']
 
 
 def test_subintervals():
@@ -110,31 +112,26 @@ def test_subintervals():
 
 
 def test_get_obs():
-    obs = collection.list_observations(start=datetime.strptime('02-01-2018',
+    obs = collection.list_observations(start=datetime.strptime('01-03-2011',
                                                                '%d-%m-%Y'),
-                                       end=datetime.strptime('03-01-2018',
+                                       end=datetime.strptime('01-04-2011',
                                                              '%d-%m-%Y'))
     expected_obs = \
-        [('A001_X1284_X3d9', datetime.strptime('2018-01-02T20:01:21.532',
-                                               IVOA_DATE_FORMAT)),
-         ('A001_X1284_X190b', datetime.strptime('2018-01-02T21:24:52.300',
+        [('A002_X1a5821_X2c', datetime.strptime('2011-03-02T02:59:32.611',
                                                 IVOA_DATE_FORMAT)),
-         ('A001_X1284_X263b', datetime.strptime('2018-01-02T21:41:59.078',
-                                                IVOA_DATE_FORMAT)),
-         ('A001_X1284_X3f5', datetime.strptime('2018-01-02T21:47:19.363',
-                                               IVOA_DATE_FORMAT))]
+         ('A002_X1a6455_X76', datetime.strptime('2011-03-02T08:27:23.299',
+                                                IVOA_DATE_FORMAT))]
 
     assert len(expected_obs) == len(obs)
     for i, o in enumerate(obs):
-        fields = o.split(',')
-        assert expected_obs[i][0] == fields[0].strip()
-        assert expected_obs[i][1] == datetime.strptime(fields[1].strip(),
+        fields = o.split('\t')
+        assert 'ALMA' == fields[0].strip()
+        assert expected_obs[i][0] == fields[1].strip()
+        assert expected_obs[i][1] == datetime.strptime(fields[2].strip(),
                                                        IVOA_DATE_FORMAT)
 
     obs = collection.list_observations(maxrec=10)
-    # TODO a bug https://github.com/opencadc/tap/issues/57 prevents this from
-    # working properly. Uncomment out when bug fix
-    # assert 10 == len(obs)
+    assert 10 == len(obs)
 
 
 def test_get_observation():
@@ -164,3 +161,11 @@ def test_get_observation():
         # compare with what we are expecting
         expected_obs = reader.read(benchmark_obs_file)
         assert not get_differences(expected_obs, obs)
+
+    # check that a RuntimeError with status_code 403 is thrown when trying to
+    # get a proprietary observation. Hopefully the used observation will stay
+    # proprietary until the release date in year 3000 ...
+    for id in ALMA_PROPRIETARY_OBS_IDS:
+        with pytest.raises(RuntimeError) as e_info:
+            collection.get_observation(id)
+    assert 403 == e_info.value.status_code

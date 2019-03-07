@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -76,20 +76,25 @@ from caom2 import ObservationWriter
 from io import BytesIO
 from collection import COLLECTION, list_observations, get_observation
 import logging
+from logging.handlers import TimedRotatingFileHandler
+import os
+from datetime import datetime
+from flask.logging import default_handler
 
 app = Flask(__name__)
 api = Api(app, default_mediatype=None)
-
-
-logger = logging.getLogger('caom2proxy')
-logger.setLevel(logging.DEBUG)
+logfile = os.path.join('/logs', '{}.log'.format(COLLECTION.lower()))
+fh = TimedRotatingFileHandler(logfile, when='W0', utc=False)
+fh.setFormatter(default_handler.formatter)
+logger = logging.getLogger()
+logger.addHandler(fh)
+logger.setLevel(logging.INFO)
 
 CAOM_VERSION = '23'
 
 
 @api.representation('text/csv')
 def output_csv(data, code, headers=None):
-    logger.debug("CSV representation")
     t = Response(stream_with_context(data))
     resp = make_response(t, code)
     resp.headers.extend(headers or {})
@@ -99,7 +104,6 @@ def output_csv(data, code, headers=None):
 @api.representation('application/xml')
 def output_xml(data, code, headers=None):
     """Makes a Flask response with a XML encoded body"""
-    logger.debug("XML representation")
     resp = make_response(data, code)
     resp.headers.extend(headers or {})
     return resp
@@ -112,14 +116,27 @@ class Caom23ObsList(Resource):
         super(Caom23ObsList, self).__init__()
 
     def get(self):
-        logger.debug("list observations")
         parser = reqparse.RequestParser()
         parser.add_argument('maxrec', type=int, help='Maximum records')
         parser.add_argument('start', type=str2ivoa, help='Start date')
         parser.add_argument('end', type=str2ivoa, help='End date')
+        now = datetime.now()
         args = parser.parse_args()
-        return list_observations(args['start'], args['end'],
-                                 args['maxrec'])
+        logger.info(
+            ('list observations - START: {{"start":"{}", "end":"{}", "maxrec":'
+             '"{}"}}').format(args['start'], args['end'], args['maxrec']))
+        try:
+            result = list_observations(args['start'], args['end'],
+                                       args['maxrec'])
+        except Exception as e:
+            logger.error('list observations - Cause: {}'.format(str(e)))
+            return make_response('ERROR: list observations. Cause: {}'.
+                                 format(e), 500)
+
+        logger.info(
+            'list observations - END: {{"time":"{}", "obscount":"{}"}}'.
+            format(round((datetime.now() - now).total_seconds()), len(result)))
+        return result
 
 
 class Caom23Obs(Resource):
@@ -128,10 +145,29 @@ class Caom23Obs(Resource):
         super(Caom23Obs, self).__init__()
 
     def get(self, id):
-        logger.debug("get observation")
-        obs = get_observation(id)
+        now = datetime.now()
+        logger.info('get observation - START: {{"id":"{}"}}'.format(id))
+        try:
+            obs = get_observation(id)
+        except Exception as e:
+            if hasattr(e, 'status_code'):
+                status_code = e.status_code
+            else:
+                status_code = 500
+            if status_code >= 500:
+                logger.error(
+                    'get observation {{"id":{}, '
+                    '"message":"{}", "code":"{}"}}'.
+                    format(id, str(e), status_code))
+            return make_response(
+                'ERROR Get observation {}/{}. Cause: {}'.
+                format(COLLECTION, id, str(e)), status_code)
         if not obs:
-            return 'Observation {}/{} not found'.format(COLLECTION, id), 404
+            return make_response(
+                'Observation {}/{} not found'.format(COLLECTION, id), 404)
+        logger.info(
+            'get observation - END: {{"id:"{}", "time":"{}"}}'.format(
+                id, round((datetime.now() - now).total_seconds())))
         writer = ObservationWriter(True)
         output = BytesIO()
         writer.write(obs, output)
@@ -186,7 +222,7 @@ class Availability(Resource):
         super(Availability, self).__init__()
 
     def get(self):
-        logger.debug("Check availability")
+        logger.debug("get availability")
         available = False
         avail_text = 'service is down'
         try:

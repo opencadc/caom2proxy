@@ -27,11 +27,15 @@ used by a proxy, is:
         :param start: start date (UTC)
         :param end: end date (UTC)
         :param maxrec: maximum number of rows to return
-        :return: Comma separated list of strings, each row of the form
-          '{}, {}\n'.format(<obsid>, <timestamp>). Note that the list must be
-          sorted based on the timestamp and that the timestamp is in IVOA
-          dateformat(from a datetime object use the
-          cadcutils.util.date2ivoa(timestamp) to get the right format)
+        :return: Tab separated list of strings, each row of the form
+        '{}\t{}\t{}\n'.format(<collection>, <obsid>, <timestamp>).
+        Note that the list must be sorted based on the timestamp and that
+        the timestamp is in IVOA dateformat(from a datetime object use the
+        cadcutils.util.date2ivoa(timestamp) to get the right format)
+        :raises: All exceptions raised by this function are mapped to
+        HTTP Bad Request (400) error unless the exception has the status_code
+        attribute with a specific HTTP error in which case that error is
+        returned.
 
     NOTE: For stream the results use a generator, e.g:
         for obs in sorted(observations):
@@ -47,6 +51,10 @@ used by a proxy, is:
         :param id: id of the observation
         :return: observation corresponding to the id or None if such
         such observation does not exist
+        :raises: All exceptions raised by this function are mapped to
+        HTTP Bad Request (400) error unless the exception has the status_code
+        attribute with a specific HTTP error in which case that error is
+        returned.
         """
         raise NotImplementedError('GET observation')
 
@@ -66,10 +74,12 @@ To run the image:
 
 ::
 
-    docker run --rm -p 5000:5000 -d  --name caom2proxy caom2proxy
+    docker run --rm -p 5000:5000 -d -v /tmp:/logs --name caom2proxy caom2proxy
 
 
-This maps the Web service to the 5000 local port.
+This maps the Web service to the 5000 local port. Also, generated logs are
+stored on the local machine in /tmp/<collection>.log since the /tmp on local
+machine is mounted as /logs in the container.
 
 
 Finally, to test the container:

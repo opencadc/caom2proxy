@@ -13,10 +13,11 @@ To run the image:
 
 ::
 
-    docker run --rm -p 5000:5000 -d  --name alma-proxy alma-proxy
+    docker run --rm -p 5000:5000 -d -v /<tmp>:/logs --name alma-proxy alma-proxy
 
 
 This maps the Web service to the 5000 local port but it can be a different one.
+Also replace <tmp> with the logs location of your choice on the host.
 
 
 Finally, to test the container:
