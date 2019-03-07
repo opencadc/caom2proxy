@@ -1,0 +1,139 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="00000000-0000-0000-85f9-c4136f389083" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+  <caom2:collection>ALMA</caom2:collection>
+  <caom2:observationID>A001_X87d_X8bc</caom2:observationID>
+  <caom2:metaRelease>2017-03-21T12:19:26.000</caom2:metaRelease>
+  <caom2:algorithm>
+    <caom2:name>Exposure</caom2:name>
+  </caom2:algorithm>
+  <caom2:intent>science</caom2:intent>
+  <caom2:proposal>
+    <caom2:id>2016.1.00320.S</caom2:id>
+    <caom2:pi>Dunham, Michael</caom2:pi>
+    <caom2:title>Surveying the Seeds of Star Formation: Starless Cores in Aquila</caom2:title>
+    <caom2:keywords>
+      <caom2:keyword>Low-mass star formation</caom2:keyword>
+      <caom2:keyword> Pre-stellar cores</caom2:keyword>
+      <caom2:keyword> Infra-Red Dark Clouds (IRDC)</caom2:keyword>
+    </caom2:keywords>
+  </caom2:proposal>
+  <caom2:telescope>
+    <caom2:name>ALMA-7m</caom2:name>
+    <caom2:geoLocationX>2225142.18</caom2:geoLocationX>
+    <caom2:geoLocationY>-5440307.37</caom2:geoLocationY>
+    <caom2:geoLocationZ>-2481029.852</caom2:geoLocationZ>
+  </caom2:telescope>
+  <caom2:instrument>
+    <caom2:name>Band 3</caom2:name>
+  </caom2:instrument>
+  <caom2:environment>
+    <caom2:tau>5.896523925454858</caom2:tau>
+    <caom2:wavelengthTau>0.00035</caom2:wavelengthTau>
+  </caom2:environment>
+  <caom2:planes>
+    <caom2:plane caom2:id="00000000-0000-0000-9fd5-9ce2f2a003fa" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+      <caom2:productID>A001_X87d_X8bc-raw</caom2:productID>
+      <caom2:metaRelease>2017-03-21T12:19:26.000</caom2:metaRelease>
+      <caom2:dataProductType>visibility</caom2:dataProductType>
+      <caom2:calibrationLevel>0</caom2:calibrationLevel>
+      <caom2:energy>
+        <caom2:bounds>
+          <caom2:lower>0.002600108048568951</caom2:lower>
+          <caom2:upper>0.0029958275007494757</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>0.002600108048568951</caom2:lower>
+              <caom2:upper>0.0026014618014578274</caom2:upper>
+            </caom2:sample>
+            <caom2:sample>
+              <caom2:lower>0.0026185034326142026</caom2:lower>
+              <caom2:upper>0.0026645849968891656</caom2:upper>
+            </caom2:sample>
+            <caom2:sample>
+              <caom2:lower>0.0028859497304582213</caom2:lower>
+              <caom2:upper>0.0029958275007494757</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:resolvingPower>472418.0019875321</caom2:resolvingPower>
+        <caom2:emBand>Millimeter</caom2:emBand>
+      </caom2:energy>
+      <caom2:time>
+        <caom2:bounds>
+          <caom2:lower>57833.51349537037</caom2:lower>
+          <caom2:upper>57833.51489537037</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>57833.51349537037</caom2:lower>
+              <caom2:upper>57833.51489537037</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:exposure>18930.239999999972</caom2:exposure>
+      </caom2:time>
+      <caom2:polarization>
+        <caom2:states>
+          <caom2:state>XX</caom2:state>
+          <caom2:state>YY</caom2:state>
+        </caom2:states>
+      </caom2:polarization>
+      <caom2:artifacts>
+        <caom2:artifact caom2:id="00000000-0000-0000-9cac-36684a4cdd3f" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A001_X87d_X8bc_001_of_001.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-836e-22b669c59db9" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xc27dd7_X1649.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>521075712</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-85e6-6e4f4bb37d5f" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xbe2ed7_X4955.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>417924096</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-86e5-7e851184af11" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xc27dd7_X1109.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>480002048</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-8ecd-9d95ad561016" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xc23361_X13b3.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>576814080</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-8bb4-3bc9d5b3123e" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xc296d2_X5420.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>522250240</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+        <caom2:artifact caom2:id="00000000-0000-0000-899c-db4f5a849309" caom2:lastModified="2017-03-21T12:19:26.000" caom2:maxLastModified="2017-03-21T12:19:26.000">
+          <caom2:uri>alma:ALMA/2016.1.00320.S_uid___A002_Xc27dd7_X1a95.asdm.sdm.tar</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:contentType>application/x-tar</caom2:contentType>
+          <caom2:contentLength>428385280</caom2:contentLength>
+          <caom2:parts/>
+        </caom2:artifact>
+      </caom2:artifacts>
+    </caom2:plane>
+  </caom2:planes>
+</caom2:Observation>

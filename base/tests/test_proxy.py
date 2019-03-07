@@ -102,6 +102,8 @@ def docker_client():
 
     return client.containers.run(IMAGE_NAME, auto_remove=True,
                                  ports={'5000/tcp': LOCAL_PORT},
+                                 volumes={'/tmp': {'bind': '/logs',
+                                                   'mode': 'rw'}},
                                  name=CONTAINER_NAME,
                                  detach=True)
 
@@ -110,17 +112,15 @@ def test_main(docker_client):
     time.sleep(5)
     response = \
         requests.get(
-            'http://localhost:{}/obs23/collection?maxrec=1&'
+            'http://localhost:{}/collection/obs23/collection?maxrec=1&'
             'start=2010-10-10T10:10:10.000&end=2011-10-10T10:10:10.0'.
             format(LOCAL_PORT))
     assert response.status_code == 500
-    assert 'NotImplementedError' in response.text
     assert 'GET list observations' in response.text
 
     response = \
         requests.get(
-            'http://localhost:{}/obs23/collection/1234'.
+            'http://localhost:{}/collection/obs23/collection/1234'.
             format(LOCAL_PORT))
     assert response.status_code == 500
-    assert 'NotImplementedError' in response.text
     assert 'GET observation' in response.text

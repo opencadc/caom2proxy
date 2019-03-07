@@ -69,53 +69,103 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from flask import Flask, Response, make_response
-from flask_restful import Resource, Api, reqparse
-from cadcutils.util import str2ivoa
-from caom2 import ObservationWriter
-from io import BytesIO
-from collection import COLLECTION, list_observations, get_observation
-
-app = Flask(__name__)
-api = Api(app, default_mediatype='text/csv')
-
-CAOM_VERSION = '23'
+# collection specific code to return a list of observation IDs or a
+# specific CAOM2 observation
 
 
-@api.representation('text/csv')
-def output_csv(data, code, headers=None):
-    resp = make_response(str(data), code)
-    resp.headers.extend(headers or {})
-    return resp
+import sys
+from datetime import datetime
+from caom2utils import caomvalidator
+from caom2 import obs_reader_writer, get_differences
+from cadcutils.util import IVOA_DATE_FORMAT
+import tempfile
+import os
+import pytest
 
 
-class Caom23ObsList(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('maxrec', type=int, help='Maximum records')
-        parser.add_argument('start', type=str2ivoa, help='Start date')
-        parser.add_argument('end', type=str2ivoa, help='End date')
-        args = parser.parse_args()
-        return Response(list_observations(args['start'], args['end'],
-                                          args['maxrec']))
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
+sys.path.insert(0, IMAGE_DIR)
+
+# following imports need to occur after we've added collection.py to the path
+import collection  # noqa
+from collection import _add_subinterval  # noqa
+
+DATA_DIR = os.path.join(PARENT_DIR, 'tests', 'data')
+
+ALMA_OBS_IDS = ['A001_X87d_X8bc', 'A001_X11a2_X11', 'A001_X144_Xef']
+ALMA_PROPRIETARY_OBS_IDS = ['A001_X2cf_X15']
 
 
-class Caom23Obs(Resource):
-    @api.representation('application/xml')
-    def get(self, id):
-        obs = get_observation(id)
-        if not obs:
-            return 'Observation {}/{} not found'.format(COLLECTION, id), 404
-        writer = ObservationWriter(True)
-        output = BytesIO()
-        writer.write(obs, output)
-        return output.getvalue().decode('utf-8')
+def test_subintervals():
+    assert _add_subinterval([], (2, 6)) == [(2, 6)]
+    assert _add_subinterval([(7, 10)], (2, 6)) == [(2, 6), (7, 10)]
+    assert _add_subinterval([(2, 6)], (7, 10)) == [(2, 6), (7, 10)]
+    assert _add_subinterval([(2, 6)], (2, 6)) == [(2, 6)]
+    assert _add_subinterval([(2, 6)], (3, 5)) == [(2, 6)]
+    assert _add_subinterval([(7, 10)], (2, 8)) == [(2, 10)]
+    assert _add_subinterval([(2, 3), (6, 7)], (4, 5)) == \
+        [(2, 3), (4, 5), (6, 7)]
+    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (4, 8)) == \
+        [(2, 3), (4, 8)]
+    assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
 
 
-api.add_resource(Caom23ObsList, '/obs{}/{}'.format(CAOM_VERSION, COLLECTION))
-api.add_resource(Caom23Obs, '/obs{}/{}/<string:id>'.format(
-    CAOM_VERSION, COLLECTION))
+def test_get_obs():
+    obs = collection.list_observations(start=datetime.strptime('01-03-2011',
+                                                               '%d-%m-%Y'),
+                                       end=datetime.strptime('01-04-2011',
+                                                             '%d-%m-%Y'))
+    expected_obs = \
+        [('A002_X1a5821_X2c', datetime.strptime('2011-03-02T02:59:32.611',
+                                                IVOA_DATE_FORMAT)),
+         ('A002_X1a6455_X76', datetime.strptime('2011-03-02T08:27:23.299',
+                                                IVOA_DATE_FORMAT))]
+
+    assert len(expected_obs) == len(obs)
+    for i, o in enumerate(obs):
+        fields = o.split('\t')
+        assert 'ALMA' == fields[0].strip()
+        assert expected_obs[i][0] == fields[1].strip()
+        assert expected_obs[i][1] == datetime.strptime(fields[2].strip(),
+                                                       IVOA_DATE_FORMAT)
+
+    obs = collection.list_observations(maxrec=10)
+    assert 10 == len(obs)
 
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+def test_get_observation():
+    """
+    NOTE: This hits the ALMA service and it will only work with Internet
+    connection and the ALMA service being up and running.
+    :return:
+    """
+    # access ALMA to get a set of observations and verifies them
+    dir = tempfile.mkdtemp()
+    obs_file = os.path.join(dir, 'obs.xml')
+
+    writer = obs_reader_writer.ObservationWriter(validate=True)
+    reader = obs_reader_writer.ObservationReader()
+    for id in ALMA_OBS_IDS:
+        obs = collection.get_observation(id)
+        caomvalidator.validate(obs)
+        # write it to a temporary file to make sure it passes the xml
+        # validation too
+        writer.write(obs, obs_file)
+        benchmark_obs_file = os.path.join(DATA_DIR, '{}.xml'.format(id))
+        # An easy way to update the benchmark files when the mapping algorithm
+        # is updated. Briefly uncomment the following line to update the
+        # files and comment it back after.
+        # writer.write(obs, benchmark_obs_file)
+
+        # compare with what we are expecting
+        expected_obs = reader.read(benchmark_obs_file)
+        assert not get_differences(expected_obs, obs)
+
+    # check that a RuntimeError with status_code 403 is thrown when trying to
+    # get a proprietary observation. Hopefully the used observation will stay
+    # proprietary until the release date in year 3000 ...
+    for id in ALMA_PROPRIETARY_OBS_IDS:
+        with pytest.raises(RuntimeError) as e_info:
+            collection.get_observation(id)
+    assert 403 == e_info.value.status_code

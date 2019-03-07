@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -82,12 +82,15 @@ def list_observations(start=None, end=None, maxrec=None):
     :param start: start date (UTC)
     :param end: end date (UTC)
     :param maxrec: maximum number of rows to return
-    :return: Comma separated list, each row consisting of ObservationID,
-    last mod date.
+    :return: Comma separated list of strings, each row of the form
+    '{}, {}\n'.format(<obsid>, <timestamp>). Note that the list must be
+    sorted based on the timestamp and that the timestamp is in IVOA dateformat
+    (from a datetime object use the cadcutils.util.date2ivoa(timestamp) to
+    get the right format)
 
     NOTE: For stream the results use a generator, e.g:
-        for i in range(3):
-        yield "{}\n".format(datetime.datetime.now().isoformat())
+        for obs in sorted(observations):
+        yield "{},{}\n".format(obs, <timestamp>)
         time.sleep(1)
     """
     raise NotImplementedError('GET list observations')

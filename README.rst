@@ -1,74 +1,98 @@
 caom2proxy
 ==========
 
+.. image:: https://img.shields.io/travis/opencadc/caom2proxy/master.svg
+    :target: https://travis-ci.org/opencadc/caom2proxy?branch=master
+
+.. image:: https://img.shields.io/coveralls/opencadc/caom2proxy/master.svg
+    :target: https://coveralls.io/github/opencadc/caom2proxy?branch=master
+
+.. image:: https://img.shields.io/github/contributors/opencadc/caom2proxy.svg
+    :target: https://github.com/opencadc/caom2proxy/graphs/contributors
+
+
 Collection of Docker images that proxy data from different data providers
 mimicking the GET endpoints of a caom2repo service
-such as the http://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2repo service. It
+such as the http://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops service. It
 is used primarily to support metadata harvesting into a CAOM2 repository.
 
 
-caom2_proxy_base
-----------------
+Subprojects
+-----------
 
-This implements the base Web Service functionality of the proxy caom2 repo.
-To implement a data provider specific container using the image created
-in this project and overriding the collection.py file in the /app directory
-of the image.
++ base: implements the base image that is inherited by all the others
++ alma: implements the image for proxying the ALMA
 
-The format of the collection.py file is:
+
+Development
+-----------
+
+Here are the steps to create a new image:
+
+1 Create the subproject:
+
+::
+
+    mkdir myproxy
+    cd myproxy
+    mkdir tests
+    mkdir image
+
+
+2. Create the development python envirnoment requirements. At the minimum,
+this consists of the pytest package
 
 ::
 
-    COLLECTION = 'collection'  # name of CAOM2 collection
+    printf "pytest>=3.6\npytest-cov\nflake8\n" > dev_requirements.txt
 
 
-    def list_observations(start=None, end=None, maxrec=None):
-        """
-        List observations
-        :param start: start date (UTC)
-        :param end: end date (UTC)
-        :param maxrec: maximum number of rows to return
-        :return: Comma separated list, each row consisting of ObservationID,
-        last mod date.
-
-        NOTE: For stream the results use a generator, e.g:
-            for i in range(3):
-            yield "{}\n".format(datetime.datetime.now().isoformat())
-            time.sleep(1)
-        """
-        raise NotImplementedError('GET list observations')
-
-
-    def get_observation(id):
-        """
-        Return the observation corresponding to the id
-        :param id: id of the observation
-        :return: observation corresponding to the id or None if such
-        such observation does not exist
-        """
-        raise NotImplementedError('GET observation')
-
-
-The Dockerfile for the image is located in the image directory. To build the image:
+3. In the image subdirectory, create the image including the Dockerfile with
+specific environment, requirements.txt file for the Python environment and
+collection.py with the specific code (see `base <base>`_ for details)
 
 ::
+
     cd image
-    docker build -t caom2proxy .
+    touch Dockerfile
+    # edit Dockerfile
+    touch requirements.txt
+    # edit requirements.txt
+    touch collection.py
+    # edit collection.py
+    cd ..
 
 
-To run the image:
+4. Create the unit tests in the tests directory. Data files required in the
+tests are located in tests/data
+
+
+5. Run tests
 
 ::
-    docker run --rm -p 5000:5000 -d  --name caom2proxy caom2proxy
 
-This maps the Web service to the 5000 local port.
+    pytest tests
 
 
-Finally, to test the container:
+6. Build and check container (see `base <base>`_ for details)
+
+7. Check the style of the code
 
 ::
-   curl http://localhost:5000/obs23/collection/123
-   curl http://localhost:5000/obs23/collection?maxrec=1000 
 
-Note: This will result in an NotImplemented error since the framework needs
-to be extended.
+    flake8 image
+    flake8 tests
+
+
+Details on how to implement an image can be found in the `base <base>`_.
+
+To test a project, the environment needs to be set up first, followed by test
+invocation:
+
+::
+
+    cd <subproject>
+    pip install -r dev_requirements.txt
+    pip install -r image/requirements.txt
+    pytest --cov tests
+
