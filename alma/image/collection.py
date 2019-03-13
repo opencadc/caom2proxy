@@ -371,7 +371,7 @@ def _get_raw_artifacts(member_ous):
     for f in file_urls:
         if '.asdm.' in f:
             results.append(f)
-        elif re.match('.*[0-9]{3,4}_of_[0-9]{3,4}\.tar$', f):
+        elif re.match(r'.*[0-9]{3,4}_of_[0-9]{3,4}\.tar$', f):
             results.append(f)
     return results
 
