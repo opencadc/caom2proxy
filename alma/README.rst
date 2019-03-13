@@ -24,6 +24,7 @@ Finally, to test the container:
 
 ::
 
-   curl http://localhost:5000/obs23/alma/A001_X11a2_X11
-   curl http://localhost:5000/obs23/alma?maxrec=1000
+   curl http://localhost:5000/alma/obs23/ALMA/A001_X11a2_X11
+   curl http://localhost:5000/alma/obs23/ALMA?maxrec=1000
+   curl http://localhost:5000/alma/artresolve?uri=alma:ALMA/A001_X131c_X12f/2017.A.00054.S_uid___A001_X131c_X12f_001_of_001.tar
 

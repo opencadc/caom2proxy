@@ -124,3 +124,9 @@ def test_main(docker_client):
             format(LOCAL_PORT))
     assert response.status_code == 500
     assert 'GET observation' in response.text
+
+    response = \
+        requests.get(
+            'http://localhost:{}/collection/artresolve'.format(LOCAL_PORT))
+    assert response.status_code == 500
+    assert 'resolve artifact uri not implememnted' in response.text

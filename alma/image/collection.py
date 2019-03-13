@@ -105,9 +105,48 @@ ALMA_TAP_SYNC_URL = \
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+cached_art_urls = {}  # cached artifact urls
 
 # This files overrides the base functionality provided in the
 # collection.py file of the proxy base docker image
+
+
+def resolve_artifact_uri(uri):
+    """
+    Return the URL corresponding to an artifact URI. The Alma archive returns
+    all the artifact URLs associated with a plane (member ous id) and in order
+    to reduce the number of requests to the Alma request handler, at each call
+    the uri that is resolved is returned and the other ones in the plane are
+    cached. This way subsequent resolve calls for artifacts in the same plane
+    are quickly resolved. Note that URLs are removed from the cache when used.
+
+    :param uri: URI for the artifact
+    e.g alma:ALMA/2017.A.00054.S_uid___A001_X131c_X12f_001_of_001.tar
+    :return: URL corresponding the artifact URI
+    """
+
+    if uri in cached_art_urls:
+        logger.debug("Resolve {} from cache".format(uri))
+        url = cached_art_urls[uri]
+        del cached_art_urls[uri]
+        return url
+    # get the observation id (member oud id)
+    (_, obs_id, file) = _art_uri2components(uri)
+    if not obs_id:
+        raise AttributeError(
+            'Cannot determine the observation id for artifact uri {}'.
+            format(uri))
+    member_ous = _to_member_ouss_id(obs_id)
+    file_urls = _get_raw_artifacts(member_ous)
+    url = None
+    logger.debug("Add urls for {} to cache".format(obs_id))
+    for f in file_urls:
+        if file in f:
+            url = f
+        else:
+            cached_art_urls[_art_url2uri(f, member_ous)] = f
+    logger.debug('Size of artifact URL cache: {}'.format(len(cached_art_urls)))
+    return url
 
 
 def list_observations(start=None, end=None, maxrec=None):
@@ -319,18 +358,40 @@ def add_raw_plane(observation, cal_planes, member_ous, meta_release):
 
 def add_raw_artifacts(plane, member_ous):
     """ Adds all the raw artifacts to the plane """
-    logger.info("Staging artifacts for plane {}".format(plane.product_id))
+    for file_url in _get_raw_artifacts(member_ous):
+        add_raw_artifact(plane, file_url, member_ous)
+
+
+def _get_raw_artifacts(member_ous):
+    logger.info("Staging artifacts for member_ous {}".format(member_ous))
     files = Alma().stage_data(member_ous)
     file_urls = list(set(files['URL']))
-    print('\n'.join(file_urls))
-    for file_url in file_urls:
-        add_raw_artifact(plane, file_url)
+    logger.debug('\n'.join(file_urls))
+    results = []
+    for f in file_urls:
+        if '.asdm.' in f:
+            results.append(f)
+        elif re.match('.*[0-9]{3,4}_of_[0-9]{3,4}\.tar$', f):
+            results.append(f)
+    return results
 
 
-def add_raw_artifact(plane, file_url):
-    """ Adds a raw artifact to the plane """
+def _art_url2uri(file_url, member_ous):
     filename = file_url.split('/')[-1]
-    file_uri = 'alma:ALMA/' + filename
+    file_uri = 'alma:ALMA/{}/{}'.format(_to_obs_id(member_ous), filename)
+    return file_uri
+
+
+def _art_uri2components(art_uri):
+    # a bit like the reverse of the one above
+    # result of form (collection, observation_id, file_name
+    uri = art_uri.replace('alma:', '')
+    return uri.split('/')
+
+
+def add_raw_artifact(plane, file_url, member_ous):
+    """ Adds a raw artifact to the plane """
+    file_uri = _art_url2uri(file_url, member_ous)
     file_header = requests.head(file_url)
     content_type = file_header.headers['Content-Type']
     if content_type == '':
