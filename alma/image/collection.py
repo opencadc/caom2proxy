@@ -334,6 +334,11 @@ def add_raw_plane(observation, cal_planes, member_ous, meta_release):
     plane = caom2.Plane(productID)
     plane.artifacts = caom2.TypedOrderedDict(caom2.Artifact)
     plane.meta_release = meta_release
+    # release date of the plane is the maximum release date of the cal planes
+    plane.data_release = cal_planes[0].data_release
+    for p in cal_planes:
+        if plane.data_release > p.data_release:
+            plane.data_release = p.data_release
     plane.calibration_level = caom2.CalibrationLevel.RAW_INSTRUMENTAL
     # wcs is shared with the target plane except position which
     # could consist in multiple disjoint areas that cannot be accurately
@@ -392,19 +397,30 @@ def _art_uri2components(art_uri):
 def add_raw_artifact(plane, file_url, member_ous):
     """ Adds a raw artifact to the plane """
     file_uri = _art_url2uri(file_url, member_ous)
-    file_header = requests.head(file_url)
-    content_type = file_header.headers['Content-Type']
+    # we found a lot of errors calling HEAD. Do a few retries
+    content_length = 0  # default
+    content_type = ''
+    for i in range(3):
+        file_header = requests.head(file_url)
+        logger.info('i={}, status={}'.format(i, file_header.status_code))
+        if file_header.status_code == 200:
+            content_type = file_header.headers['Content-Type']
+            try:
+                content_length = int(file_header.headers['Content-Length'])
+            except KeyError:
+                logger.error("No content length returned: {}".format(file_url))
+            break
+        if file_header.status_code == 401:
+            break
+    if i == 2:
+        raise RuntimeError('Cannot get head info for file {}'.format(file_url))
     if content_type == '':
         content_type = mimetypes.guess_type(file_url)[0]
     product_type = caom2.ProductType.SCIENCE
     artifact = caom2.Artifact(file_uri, product_type,
                               caom2.ReleaseType.META,
-                              content_type=content_type)
-    try:
-        artifact.content_length = int(file_header.headers['Content-Length'])
-    except KeyError:
-        # not content length returned
-        pass
+                              content_type=content_type,
+                              content_length=content_length)
     artifact.last_modified = plane.max_last_modified
     artifact.max_last_modified = plane.max_last_modified
     plane.artifacts[file_uri] = artifact
