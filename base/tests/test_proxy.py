@@ -79,10 +79,12 @@ import requests
 logger = logging.getLogger('test')
 
 CONTAINER_NAME = 'caom2proxy'
+BASE_IMAGE_NAME = 'bucket.canfar.net/cadc/base-caom2-proxy'
 IMAGE_NAME = 'caom2proxy:latest'
 LOCAL_PORT = 5000
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+BASE_IMAGE_DIR = os.path.join(os.path.dirname(PARENT_DIR), 'base', 'image')
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 
 
@@ -98,6 +100,8 @@ def docker_client():
     except Exception as e:
         logger.warning('Cannot remove image: {}'.format(str(e)))
 
+    # build base name
+    client.images.build(path=BASE_IMAGE_DIR, tag=BASE_IMAGE_NAME)
     client.images.build(path=IMAGE_DIR, tag=IMAGE_NAME)
 
     return client.containers.run(IMAGE_NAME, auto_remove=True,
