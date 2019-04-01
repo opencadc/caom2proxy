@@ -113,7 +113,7 @@ def docker_client():
 
 
 def test_main(docker_client):
-    time.sleep(5)
+    time.sleep(10)
     response = \
         requests.get(
             'http://localhost:{}/collection/obs23/collection?maxrec=1&'
