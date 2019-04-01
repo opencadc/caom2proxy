@@ -118,12 +118,14 @@ def docker_client():
 
 def test_main(docker_client):
     assert docker_client.status == 'created'
+    with open('/tmp/collection.log', 'r') as f:
+        print(f.read())
     time.sleep(10)
     response = \
         requests.get(
             'http://localhost:{}/collection/obs23/collection?maxrec=1&'
             'start=2010-10-10T10:10:10.000&end=2011-10-10T10:10:10.0'.
-            format(LOCAL_PORT))
+            format(LOCAL_PORT+1))
     assert response.status_code == 500
     assert 'GET list observations' in response.text
 
