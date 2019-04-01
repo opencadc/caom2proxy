@@ -96,6 +96,10 @@ def docker_client():
         if c.name == CONTAINER_NAME:
             c.kill()
     try:
+        client.images.remove(BASE_IMAGE_NAME, force=True)
+    except Exception as e:
+        logger.warning('Cannot remove base image: {}'.format(str(e)))
+    try:
         client.images.remove(IMAGE_NAME, force=True)
     except Exception as e:
         logger.warning('Cannot remove image: {}'.format(str(e)))
@@ -113,6 +117,7 @@ def docker_client():
 
 
 def test_main(docker_client):
+    assert docker_client.status == 'created'
     time.sleep(10)
     response = \
         requests.get(
