@@ -118,9 +118,9 @@ def docker_client():
 
 def test_main(docker_client):
     assert docker_client.status == 'created'
+    time.sleep(10)
     with open('/tmp/collection.log', 'r') as f:
         print(f.read())
-    time.sleep(10)
     response = \
         requests.get(
             'http://localhost:{}/collection/obs23/collection?maxrec=1&'
