@@ -81,7 +81,7 @@ logger = logging.getLogger('test')
 CONTAINER_NAME = 'caom2proxy'
 BASE_IMAGE_NAME = 'bucket.canfar.net/cadc/base-caom2-proxy'
 IMAGE_NAME = 'caom2proxy:latest'
-LOCAL_PORT = 5000
+LOCAL_PORT = 5500
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 BASE_IMAGE_DIR = os.path.join(os.path.dirname(PARENT_DIR), 'base', 'image')
@@ -123,7 +123,7 @@ def test_main(docker_client):
         print(f.read())
     response = \
         requests.get(
-            'http://0.0.0.0:{}/collection/obs23/collection?maxrec=1&'
+            'http://localhost:{}/collection/obs23/collection?maxrec=1&'
             'start=2010-10-10T10:10:10.000&end=2011-10-10T10:10:10.0'.
             format(LOCAL_PORT))
     assert response.status_code == 500
