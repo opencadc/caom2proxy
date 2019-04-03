@@ -149,7 +149,7 @@ class Caom23Obs(Resource):
         super(Caom23Obs, self).__init__()
 
     def get(self, id):
-        obs = _get_resouce(get_observation, id=id)
+        obs = _get_resource(get_observation, id=id)
         if not isinstance(obs, Observation):
             logger.info("Type of obs is {}".format(type(obs)))
             return obs
@@ -168,10 +168,10 @@ class ArtifactResolver(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('uri', type=str, help='artifact uri')
         args = parser.parse_args()
-        return _get_resouce(resolve_artifact_uri, uri=args['uri'])
+        return _get_resource(resolve_artifact_uri, uri=args['uri'])
 
 
-def _get_resouce(func, **kwargs):
+def _get_resource(func, **kwargs):
     func_name = func.__name__
     now = datetime.now()
     log_args = ''
