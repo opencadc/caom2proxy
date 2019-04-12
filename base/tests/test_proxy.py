@@ -111,6 +111,8 @@ def docker_client():
 def test_main(docker_client):
     assert docker_client.status == 'created'
     time.sleep(5)
+    print('________________{}'.format(docker_client.top()['Processes']))
+    print('*****************{}'.format(docker_client.logs()))
     with open('/tmp/collection.log', 'r') as f:
         print(f.read())
     response = \
