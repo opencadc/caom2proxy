@@ -176,7 +176,7 @@ def list_observations(start=None, end=None, maxrec=None):
             raise AttributeError('maxrec must be positive integer')
         top = 'TOP {}'.format(maxrec)
     query = "SELECT {} obs_id AS observationID, min(t_min) AS obsTime " \
-            "FROM alma.obscore {} GROUP BY obs_id ORDER by obsTime".\
+            "FROM ivoa.obscore {} GROUP BY obs_id ORDER by obsTime".\
         format(top, where)
     response = requests.get(ALMA_TAP_SYNC_URL,
                             params={'QUERY': query, 'LANG': 'ADQL'})
