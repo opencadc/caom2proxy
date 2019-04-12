@@ -100,7 +100,7 @@ def docker_client():
 
     client.images.build(path=IMAGE_DIR, tag=IMAGE_NAME)
 
-    return client.containers.run(IMAGE_NAME, auto_remove=True,
+    return client.containers.run(IMAGE_NAME, auto_remove=False,
                                  ports={'5000/tcp': LOCAL_PORT},
                                  volumes={'/tmp': {'bind': '/logs',
                                                    'mode': 'rw'}},
@@ -111,9 +111,8 @@ def docker_client():
 def test_main(docker_client):
     assert docker_client.status == 'created'
     time.sleep(5)
-    print('***************'.format(docker.from_env().containers.list()))
-    #print('*****************{}'.format(docker_client.logs()))
-    #print('________________{}'.format(docker_client.top()))
+    print('*****************{}'.format(docker_client.logs()))
+    print('________________{}'.format(docker_client.top()))
     with open('/tmp/collection.log', 'r') as f:
         print(f.read())
     response = \
