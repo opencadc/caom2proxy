@@ -83,7 +83,6 @@ IMAGE_NAME = 'caom2proxy:latest'
 LOCAL_PORT = 5000
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-BASE_IMAGE_DIR = os.path.join(os.path.dirname(PARENT_DIR), 'base', 'image')
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
 
 
@@ -116,7 +115,7 @@ def test_main(docker_client):
         print(f.read())
     response = \
         requests.get(
-            'http://localhost:{}/collection/obs23/collection?maxrec=1&'
+            'http://127.0.0.1:{}/collection/obs23/collection?maxrec=1&'
             'start=2010-10-10T10:10:10.000&end=2011-10-10T10:10:10.0'.
             format(LOCAL_PORT))
     assert response.status_code == 500
@@ -124,13 +123,13 @@ def test_main(docker_client):
 
     response = \
         requests.get(
-            'http://localhost:{}/collection/obs23/collection/1234'.
+            'http://127.0.0.1:{}/collection/obs23/collection/1234'.
             format(LOCAL_PORT))
     assert response.status_code == 500
     assert 'GET observation' in response.text
 
     response = \
         requests.get(
-            'http://localhost:{}/collection/artresolve'.format(LOCAL_PORT))
+            'http://127.0.0.1:{}/collection/artresolve'.format(LOCAL_PORT))
     assert response.status_code == 500
     assert 'resolve artifact uri not implememnted' in response.text
