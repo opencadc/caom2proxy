@@ -81,7 +81,9 @@ from cadcutils.util import IVOA_DATE_FORMAT
 import tempfile
 import os
 import pytest
+import re
 
+one_test = False
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 IMAGE_DIR = os.path.join(PARENT_DIR, 'image')
@@ -97,6 +99,7 @@ ALMA_OBS_IDS = ['A001_X87d_X8bc', 'A001_X11a2_X11', 'A001_X144_Xef']
 ALMA_PROPRIETARY_OBS_IDS = ['A001_X2cf_X15']
 
 
+@pytest.mark.skipif(one_test, reason='One test mode')
 def test_subintervals():
     assert _add_subinterval([], (2, 6)) == [(2, 6)]
     assert _add_subinterval([(7, 10)], (2, 6)) == [(2, 6), (7, 10)]
@@ -111,6 +114,24 @@ def test_subintervals():
     assert _add_subinterval([(2, 3), (4, 5), (6, 7)], (2, 7)) == [(2, 7)]
 
 
+@pytest.mark.skipif(one_test, reason='One test mode')
+def test_resolve_artifact():
+    url = collection.resolve_artifact_uri(
+        'alma:ALMA/A001_X131c_X12f/2017.A.'
+        '00054.S_uid___A001_X131c_X12f_001_of_001.tar')
+    assert re.match(
+        'http.*2017.A.00054.S_uid___A001_X131c_X12f_001_of_001.tar', url)
+    # the other url of the other artifact in the plane is cached
+    assert len(collection.cached_art_urls) == 1
+    # call the second one
+    file2 = list(collection.cached_art_urls)[0]
+    url2 = collection.cached_art_urls[file2]
+    url = collection.resolve_artifact_uri(file2)
+    assert url2 == url
+    assert len(collection.cached_art_urls) == 0
+
+
+@pytest.mark.skipif(one_test, reason='One test mode')
 def test_get_obs():
     obs = collection.list_observations(start=datetime.strptime('01-03-2011',
                                                                '%d-%m-%Y'),
@@ -134,6 +155,7 @@ def test_get_obs():
     assert 10 == len(obs)
 
 
+@pytest.mark.skipif(one_test, reason='One test mode')
 def test_get_observation():
     """
     NOTE: This hits the ALMA service and it will only work with Internet

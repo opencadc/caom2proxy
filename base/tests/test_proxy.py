@@ -100,7 +100,7 @@ def docker_client():
 
     client.images.build(path=IMAGE_DIR, tag=IMAGE_NAME)
 
-    return client.containers.run(IMAGE_NAME, auto_remove=True,
+    return client.containers.run(IMAGE_NAME, auto_remove=False,
                                  ports={'5000/tcp': LOCAL_PORT},
                                  volumes={'/tmp': {'bind': '/logs',
                                                    'mode': 'rw'}},
@@ -109,10 +109,15 @@ def docker_client():
 
 
 def test_main(docker_client):
+    assert docker_client.status == 'created'
     time.sleep(5)
+    print('*****************{}'.format(docker_client.logs()))
+    print('________________{}'.format(docker_client.top()))
+    with open('/tmp/collection.log', 'r') as f:
+        print(f.read())
     response = \
         requests.get(
-            'http://localhost:{}/collection/obs23/collection?maxrec=1&'
+            'http://127.0.0.1:{}/collection/obs23/collection?maxrec=1&'
             'start=2010-10-10T10:10:10.000&end=2011-10-10T10:10:10.0'.
             format(LOCAL_PORT))
     assert response.status_code == 500
@@ -120,7 +125,13 @@ def test_main(docker_client):
 
     response = \
         requests.get(
-            'http://localhost:{}/collection/obs23/collection/1234'.
+            'http://127.0.0.1:{}/collection/obs23/collection/1234'.
             format(LOCAL_PORT))
     assert response.status_code == 500
     assert 'GET observation' in response.text
+
+    response = \
+        requests.get(
+            'http://127.0.0.1:{}/collection/artresolve'.format(LOCAL_PORT))
+    assert response.status_code == 500
+    assert 'resolve artifact uri not implememnted' in response.text

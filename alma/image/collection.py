@@ -105,9 +105,48 @@ ALMA_TAP_SYNC_URL = \
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+cached_art_urls = {}  # cached artifact urls
 
 # This files overrides the base functionality provided in the
 # collection.py file of the proxy base docker image
+
+
+def resolve_artifact_uri(uri):
+    """
+    Return the URL corresponding to an artifact URI. The Alma archive returns
+    all the artifact URLs associated with a plane (member ous id) and in order
+    to reduce the number of requests to the Alma request handler, at each call
+    the uri that is resolved is returned and the other ones in the plane are
+    cached. This way subsequent resolve calls for artifacts in the same plane
+    are quickly resolved. Note that URLs are removed from the cache when used.
+
+    :param uri: URI for the artifact
+    e.g alma:ALMA/2017.A.00054.S_uid___A001_X131c_X12f_001_of_001.tar
+    :return: URL corresponding the artifact URI
+    """
+
+    if uri in cached_art_urls:
+        logger.debug("Resolve {} from cache".format(uri))
+        url = cached_art_urls[uri]
+        del cached_art_urls[uri]
+        return url
+    # get the observation id (member oud id)
+    (_, obs_id, file) = _art_uri2components(uri)
+    if not obs_id:
+        raise AttributeError(
+            'Cannot determine the observation id for artifact uri {}'.
+            format(uri))
+    member_ous = _to_member_ouss_id(obs_id)
+    file_urls = _get_raw_artifacts(member_ous)
+    url = None
+    logger.debug("Add urls for {} to cache".format(obs_id))
+    for f in file_urls:
+        if file in f:
+            url = f
+        else:
+            cached_art_urls[_art_url2uri(f, member_ous)] = f
+    logger.debug('Size of artifact URL cache: {}'.format(len(cached_art_urls)))
+    return url
 
 
 def list_observations(start=None, end=None, maxrec=None):
@@ -136,8 +175,8 @@ def list_observations(start=None, end=None, maxrec=None):
         if int(maxrec) < 1:
             raise AttributeError('maxrec must be positive integer')
         top = 'TOP {}'.format(maxrec)
-    query = "SELECT {} obs_id AS observationID, min(t_min) AS obsTime " \
-            "FROM alma.obscore {} GROUP BY obs_id ORDER by obsTime".\
+    query = "SELECT {} obs_id, min(t_min) AS obsTime " \
+            "FROM ivoa.obscore {} GROUP BY obs_id ORDER by obsTime".\
         format(top, where)
     response = requests.get(ALMA_TAP_SYNC_URL,
                             params={'QUERY': query, 'LANG': 'ADQL'})
@@ -295,6 +334,11 @@ def add_raw_plane(observation, cal_planes, member_ous, meta_release):
     plane = caom2.Plane(productID)
     plane.artifacts = caom2.TypedOrderedDict(caom2.Artifact)
     plane.meta_release = meta_release
+    # release date of the plane is the maximum release date of the cal planes
+    plane.data_release = cal_planes[0].data_release
+    for p in cal_planes:
+        if plane.data_release > p.data_release:
+            plane.data_release = p.data_release
     plane.calibration_level = caom2.CalibrationLevel.RAW_INSTRUMENTAL
     # wcs is shared with the target plane except position which
     # could consist in multiple disjoint areas that cannot be accurately
@@ -319,31 +363,64 @@ def add_raw_plane(observation, cal_planes, member_ous, meta_release):
 
 def add_raw_artifacts(plane, member_ous):
     """ Adds all the raw artifacts to the plane """
-    logger.info("Staging artifacts for plane {}".format(plane.product_id))
+    for file_url in _get_raw_artifacts(member_ous):
+        add_raw_artifact(plane, file_url, member_ous)
+
+
+def _get_raw_artifacts(member_ous):
+    logger.info("Staging artifacts for member_ous {}".format(member_ous))
     files = Alma().stage_data(member_ous)
     file_urls = list(set(files['URL']))
-    print('\n'.join(file_urls))
-    for file_url in file_urls:
-        add_raw_artifact(plane, file_url)
+    logger.debug('\n'.join(file_urls))
+    results = []
+    for f in file_urls:
+        if '.asdm.' in f:
+            results.append(f)
+        elif re.match(r'.*[0-9]{3,4}_of_[0-9]{3,4}\.tar$', f):
+            results.append(f)
+    return results
 
 
-def add_raw_artifact(plane, file_url):
-    """ Adds a raw artifact to the plane """
+def _art_url2uri(file_url, member_ous):
     filename = file_url.split('/')[-1]
-    file_uri = 'alma:ALMA/' + filename
-    file_header = requests.head(file_url)
-    content_type = file_header.headers['Content-Type']
+    file_uri = 'alma:ALMA/{}/{}'.format(_to_obs_id(member_ous), filename)
+    return file_uri
+
+
+def _art_uri2components(art_uri):
+    # a bit like the reverse of the one above
+    # result of form (collection, observation_id, file_name
+    uri = art_uri.replace('alma:', '')
+    return uri.split('/')
+
+
+def add_raw_artifact(plane, file_url, member_ous):
+    """ Adds a raw artifact to the plane """
+    file_uri = _art_url2uri(file_url, member_ous)
+    # we found a lot of errors calling HEAD. Do a few retries
+    content_length = 0  # default
+    content_type = ''
+    for i in range(3):
+        file_header = requests.head(file_url)
+        logger.info('i={}, status={}'.format(i, file_header.status_code))
+        if file_header.status_code == 200:
+            content_type = file_header.headers['Content-Type']
+            try:
+                content_length = int(file_header.headers['Content-Length'])
+            except KeyError:
+                logger.error("No content length returned: {}".format(file_url))
+            break
+        if file_header.status_code == 401:
+            break
+    if i == 2:
+        raise RuntimeError('Cannot get head info for file {}'.format(file_url))
     if content_type == '':
         content_type = mimetypes.guess_type(file_url)[0]
     product_type = caom2.ProductType.SCIENCE
     artifact = caom2.Artifact(file_uri, product_type,
                               caom2.ReleaseType.META,
-                              content_type=content_type)
-    try:
-        artifact.content_length = int(file_header.headers['Content-Length'])
-    except KeyError:
-        # not content length returned
-        pass
+                              content_type=content_type,
+                              content_length=content_length)
     artifact.last_modified = plane.max_last_modified
     artifact.max_last_modified = plane.max_last_modified
     plane.artifacts[file_uri] = artifact

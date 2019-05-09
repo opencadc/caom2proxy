@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
@@ -72,9 +73,13 @@ from __future__ import (absolute_import, division, print_function,
 from flask import Flask, Response, make_response, stream_with_context, request
 from flask_restful import Resource, Api, reqparse
 from cadcutils.util import str2ivoa
-from caom2 import ObservationWriter
+from caom2 import ObservationWriter, Observation
 from io import BytesIO
 from collection import COLLECTION, list_observations, get_observation
+try:
+    from collection import resolve_artifact_uri
+except ImportError:
+    pass  # resolve_artifact_uri is optional
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
@@ -145,33 +150,58 @@ class Caom23Obs(Resource):
         super(Caom23Obs, self).__init__()
 
     def get(self, id):
-        now = datetime.now()
-        logger.info('get observation - START: {{"id":"{}"}}'.format(id))
-        try:
-            obs = get_observation(id)
-        except Exception as e:
-            if hasattr(e, 'status_code'):
-                status_code = e.status_code
-            else:
-                status_code = 500
-            if status_code >= 500:
-                logger.error(
-                    'get observation {{"id":{}, '
-                    '"message":"{}", "code":"{}"}}'.
-                    format(id, str(e), status_code))
-            return make_response(
-                'ERROR Get observation {}/{}. Cause: {}'.
-                format(COLLECTION, id, str(e)), status_code)
-        if not obs:
-            return make_response(
-                'Observation {}/{} not found'.format(COLLECTION, id), 404)
-        logger.info(
-            'get observation - END: {{"id:"{}", "time":"{}"}}'.format(
-                id, round((datetime.now() - now).total_seconds())))
+        obs = _get_resource(get_observation, id=id)
+        if not isinstance(obs, Observation):
+            logger.info("Type of obs is {}".format(type(obs)))
+            return obs
         writer = ObservationWriter(True)
         output = BytesIO()
         writer.write(obs, output)
         return output.getvalue().decode('utf-8')
+
+
+class ArtifactResolver(Resource):
+    def __init__(self, representations=None):
+        self.representations = representations
+        super(ArtifactResolver, self).__init__()
+
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('uri', type=str, help='artifact uri')
+        args = parser.parse_args()
+        return _get_resource(resolve_artifact_uri, uri=args['uri'])
+
+
+def _get_resource(func, **kwargs):
+    func_name = func.__name__
+    now = datetime.now()
+    log_args = ''
+    for i, k in enumerate(kwargs):
+        if i:
+            log_args += ','
+        log_args += '"{}":"{}"'.format(k, kwargs[k])
+    logger.info('{} - START: {{{}}}'.format(func_name, log_args))
+    try:
+        result = func(**kwargs)
+    except Exception as e:
+        if hasattr(e, 'status_code'):
+            status_code = e.status_code
+        else:
+            status_code = 500
+        if status_code >= 500:
+            logger.error(
+                '{} {{{}}}, '
+                '"message":"{}", "code":"{}"}}'.
+                format(func_name, log_args, str(e), status_code))
+        return make_response(
+            'ERROR {} {{{}}}. Cause[{}]: {}\n'.
+            format(func_name, log_args, type(e), str(e)), status_code)
+    if not result:
+        return make_response(
+            'Not found {}\n'.format(log_args), 404)
+    logger.info('{} - END: {{{}, "time":"{}"}}'.format(
+        func_name, log_args, round((datetime.now() - now).total_seconds())))
+    return result
 
 
 class Capabilities23(Resource):
@@ -251,6 +281,9 @@ api.add_resource(Caom23Obs, '/{}/obs{}/{}/<string:id>'.format(
     COLLECTION.lower(), CAOM_VERSION, COLLECTION),
                  resource_class_kwargs={
                      'representations': {'application/xml': output_xml}})
+api.add_resource(ArtifactResolver, '/{}/artresolve'.format(COLLECTION.lower()),
+                 resource_class_kwargs={
+                     'representations': {'text/csv': output_csv}})
 api.add_resource(Capabilities23, '/{}/capabilities'.format(COLLECTION.lower()),
                  resource_class_kwargs={
                      'representations': {'application/xml': output_xml}})

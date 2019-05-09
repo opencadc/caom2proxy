@@ -93,7 +93,7 @@ def list_observations(start=None, end=None, maxrec=None):
         yield "{},{}\n".format(obs, <timestamp>)
         time.sleep(1)
     """
-    raise NotImplementedError('GET list observations')
+    raise NotImplementedError('GET list observations not implemented')
 
 
 def get_observation(id):
@@ -103,4 +103,13 @@ def get_observation(id):
     :return: observation corresponding to the id or None if such
     such observation does not exist
     """
-    raise NotImplementedError('GET observation')
+    raise NotImplementedError('GET observation not implemented')
+
+
+def resolve_artifact_uri(uri):
+    """
+    Return the URL corresponding to an artifact URI
+    :param uri: URI for the artifact
+    :return: URL corresponding the artifact URI
+    """
+    raise NotImplementedError('resolve artifact uri not implememnted')

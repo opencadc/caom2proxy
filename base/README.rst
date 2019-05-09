@@ -59,6 +59,16 @@ used by a proxy, is:
         raise NotImplementedError('GET observation')
 
 
+    def resolve_artifact_uri(uri):
+        """
+        Return the URL corresponding to an artifact URI
+        Note: This is optional and does not need to be implemented
+        :param uri: URI for the artifact
+        :return: URL corresponding the artifact URI
+        """
+        raise NotImplementedError('resolve artifact uri not implememnted')
+
+
 Collection proxies override the file in their image with their own
 implementation.
 
@@ -82,12 +92,13 @@ stored on the local machine in /tmp/<collection>.log since the /tmp on local
 machine is mounted as /logs in the container.
 
 
-Finally, to test the container:
+Finally, to test the container (artresolve is optional):
 
 ::
 
-   curl http://localhost:5000/obs23/<collection>/123
-   curl http://localhost:5000/obs23/<collection>?maxrec=1000
+   curl http://localhost:5000/collection/obs23/<collection>/123
+   curl http://localhost:5000/collection/obs23/<collection>?maxrec=1000
+   curl http://localhost:5000/collection/artresolve?uri=foo
 
 
 Replace <collection> with the name of the collection you set in the
